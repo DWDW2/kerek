@@ -1,12 +1,15 @@
 import Navbar from "@/components/navbar";
 import HeroSection from "@/components/hero-section";
 import Features from "@/components/features";
-export default function Home() {
+import Animation from "@/components/animation";
+export default async function Home() {
   return (
     <>
-      <Navbar />
-      <HeroSection />
-      <Features />
+      <Animation>
+        <Navbar />
+        <HeroSection />
+        <Features />
+      </Animation>
     </>
   );
 }

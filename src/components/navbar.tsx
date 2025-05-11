@@ -1,8 +1,7 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
-import { authClient } from "@/lib/auth-client";
-import { Button } from "./ui/button";
+import { motion } from "framer-motion";
 const navItems = [
   {
     label: "Home",
@@ -18,9 +17,9 @@ const navItems = [
   },
 ];
 export default function Navbar() {
-  const { signIn, signUp } = authClient;
+  const [isHidden, setIsHidden] = useState(false);
   return (
-    <div className="flex flex-row w-[75vw] justify-between items-center bg-white fixed top-3 left-0 right-0 mx-auto px-10 py-2 rounded-3xl z-50">
+    <motion.div className="flex border flex-row w-[75vw] justify-between items-center bg-white fixed top-3 left-0 right-0 mx-auto px-10 py-2 rounded-3xl z-50">
       <h1 className="text-2xl font-bold text-gray-800 tracking-tighter">
         Kerek
       </h1>
@@ -30,18 +29,7 @@ export default function Navbar() {
             {item.label}
           </Link>
         ))}
-        <Button
-          onClick={() =>
-            signUp.email({
-              email: "test@test.com",
-              password: "2323adfasdfafwefawasca323r23r",
-              name: "zhansar",
-            })
-          }
-        >
-          Sign Up
-        </Button>
       </div>
-    </div>
+    </motion.div>
   );
 }

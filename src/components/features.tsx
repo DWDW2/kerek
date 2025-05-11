@@ -21,7 +21,7 @@ const features = [
   {
     title: "Smart Suggestions",
     description:
-      "We provide a system that can help you to write original content.",
+      "We provide a system that can help you to write with deep understanding of other people's content.",
     icon: "💡",
   },
 ];

@@ -26,7 +26,10 @@ export default function HeroSection() {
         >
           Get Started
         </AnimatedButton>
-        <Button variant={"secondary"} className="w-full md:w-auto py-5">
+        <Button
+          variant={"secondary"}
+          className="w-full md:w-auto px-12 py-6 border border-neutral-100"
+        >
           Learn More
         </Button>
       </section>

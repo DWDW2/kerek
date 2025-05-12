@@ -9,7 +9,9 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@radix-ui/react-avatar": "^1.1.9",
     "@radix-ui/react-slot": "^1.2.2",
+    "@radix-ui/react-tabs": "^1.1.11",
     "@t3-oss/env-nextjs": "^0.13.4",
     "ai": "^4.3.15",
     "better-auth": "^1.2.7",

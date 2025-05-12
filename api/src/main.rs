@@ -40,8 +40,8 @@ async fn main() -> std::io::Result<()> {
             .app_data(session_data.clone())
             // User routes
             .service(
-                web::scope("/api/users"))
-                    .route("/register", web::post().to(handlers::user::register))
+                web::scope("/api/users")
+                    .route("/register", web::post().to(handlers::user::register)))
             //         .route("/login", web::post().to(handlers::users::login))
             //         .route("/profile", web::get().to(handlers::users::get_profile))
             //         .route("/profile", web::put().to(handlers::users::update_profile))
@@ -66,7 +66,7 @@ async fn main() -> std::io::Result<()> {
             // // WebSocket route
             // .route("/ws/messages", web::get().to(websocket::ws_index))
     })
-    .bind((host, port))?
+    .bind(("127.0.0.1", 8080))?
     .run()
     .await
 }

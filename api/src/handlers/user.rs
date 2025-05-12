@@ -23,7 +23,6 @@ pub async fn register(
     if let Ok(Some(_)) = db::users::find_by_email(&session, &user_data.email).await {
         return Err(AppError("Email already registered".to_string(), StatusCode::BAD_REQUEST));
     }
-
     let password_hash = hash(&user_data.password, DEFAULT_COST)
         .map_err(|e| AppError(format!("Password hashing error: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?;
     

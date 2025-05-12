@@ -1,6 +1,8 @@
 use actix_web::web;
 use scylla::client::{session::Session, session_builder::SessionBuilder};
 use scylla::errors::{ExecutionError, NewSessionError};
+use futures_util::stream::TryStreamExt;
+use actix_web::http::StatusCode;
 
 pub async fn connect() -> Result<Session, NewSessionError> {
     let session = SessionBuilder::new().known_node("0.0.0.0:9042").build().await?;
@@ -80,16 +82,19 @@ pub async fn setup_database(session: &web::Data<Session>) -> Result<(), Executio
 
 pub mod users {
     use super::*;
+    use scylla::{errors::PagerExecutionError, value::CqlTimestamp};
     use uuid::Uuid;
     use chrono::Utc;
-    use crate::models::user::{User, NewUser};
+    use crate::{error::AppError, models::user::{NewUser, User}};
+
+
     pub async fn create(session: &web::Data<Session>, new_user: NewUser) -> Result<User, ExecutionError> {
         let id = Uuid::new_v4();
         let now = Utc::now().timestamp_millis();
         session.query_unpaged(
             "INSERT INTO users (id, username, email, password_hash, created_at, updated_at)
             VALUES (?, ?, ?, ?, ?, ?)",
-            (&id, &new_user.username, &new_user.email, &new_user.password_hash, &now, &now)
+            (&id, &new_user.username, &new_user.email, &new_user.password_hash, CqlTimestamp(now), CqlTimestamp(now))
         ).await?;
         
         Ok(User {
@@ -102,28 +107,29 @@ pub mod users {
         })
     }
     
-    pub async fn find_by_email(session: &web::Data<Session>, email: &str) -> Result<Option<User>, ExecutionError> {
-        let result = session.query_unpaged(
-            "SELECT id, username, email FROM users WHERE email = ?",
-            &(email,)
-        ).await?;
-        
-        let rows = result.is_rows();
-        if rows {
-            return Ok(None);
+    pub async fn find_by_email(session: &web::Data<Session>, email: &str) -> Result<Option<User>, AppError> {
+        let mut iter = session.query_iter(
+            "SELECT id, username, email, password_hash FROM users WHERE email = ?",
+            (email,),
+        ).await.unwrap().rows_stream::<(Uuid, String, String, String)>().unwrap();
+
+        match iter.try_next().await {
+            Ok(Some(row)) => {
+                let (id, username, email, password_hash) = row;
+                println!("id: {}, username: {}, email: {}, password_hash: {}", id, username, email, password_hash);
+                Ok(Some(User {
+                    id: id.to_string(),
+                    username,
+                    email,
+                    password_hash,
+                    created_at: 0,
+                    updated_at: 0,
+                }))
+            }
+            Ok(None) => Ok(None),
+            Err(e) => Err(AppError("Failed to find user by email".to_string(), StatusCode::INTERNAL_SERVER_ERROR)),
         }
-        
-        let row = result.into_rows_result().unwrap();
-        
-        println!("{:?}", row);
-        Ok(Some(User {
-            id: "fake_id".to_string(),
-            username: "fake_username".to_string(),
-            email: "fake_email".to_string(),
-            password_hash: "fake_password_hash".to_string(),
-            created_at: 0,
-            updated_at: 0,
-        }))
     }
+    
     
 }

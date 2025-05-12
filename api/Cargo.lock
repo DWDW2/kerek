@@ -374,6 +374,7 @@ dependencies = [
  "chrono",
  "dotenv",
  "env_logger",
+ "futures-util",
  "jsonwebtoken",
  "postgres-types",
  "scylla",

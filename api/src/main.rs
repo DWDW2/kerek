@@ -2,10 +2,10 @@ mod db;
 mod models;
 mod handlers;
 mod error;
-// mod middleware;
+mod middleware;
 // mod websocket;
 // mod error;
-use actix_web::middleware;
+use actix_web::middleware as actix_middleware;
 use actix_web::{web, App, HttpServer};
 use actix_cors::Cors;
 use dotenv::dotenv;
@@ -36,17 +36,17 @@ async fn main() -> std::io::Result<()> {
             
         App::new()
             .wrap(cors)
-            .wrap(middleware::Logger::default())
+            .wrap(actix_middleware::Logger::default())
             .app_data(session_data.clone())
             // User routes
             .service(
                 web::scope("/api/users")
-                    .route("/register", web::post().to(handlers::user::register)))
-            //         .route("/login", web::post().to(handlers::users::login))
-            //         .route("/profile", web::get().to(handlers::users::get_profile))
-            //         .route("/profile", web::put().to(handlers::users::update_profile))
-            //         .route("/search", web::get().to(handlers::users::search))
-            // )
+                    .route("/register", web::post().to(handlers::user::register))
+                    .route("/login", web::post().to(handlers::user::login))
+                    .route("/profile", web::get().to(handlers::user::get_profile))
+                    .route("/profile", web::put().to(handlers::user::update_profile))
+                    .route("/search", web::get().to(handlers::user::search))
+            )
             // // Conversation routes
             // .service(
             //     web::scope("/api/conversations")

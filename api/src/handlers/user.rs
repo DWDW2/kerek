@@ -5,7 +5,7 @@ use chrono::{Utc, Duration};
 use std::env;
 use scylla::client::session::Session;
 use crate::error::AppError;
-use crate::models::user::{NewUser, LoginRequest, AuthResponse, User};
+use crate::models::user::{NewUser, LoginRequest, AuthResponse, User, UpdateProfileRequest};
 use crate::db;
 use serde::Serialize;
 use actix_web::http::StatusCode;
@@ -82,4 +82,82 @@ fn create_token(user: &User) -> Result<String, AppError> {
         &EncodingKey::from_secret(secret.as_bytes()),
     )
     .map_err(|e| AppError(format!("Token generation error: {}", e), StatusCode::INTERNAL_SERVER_ERROR))
+}
+
+pub async fn get_profile(
+    session: web::Data<Session>,
+    user_id: web::Path<String>,
+) -> Result<HttpResponse, AppError> {
+    let user = match db::users::find_by_id(&session, &user_id).await {
+        Ok(Some(user)) => user,
+        Ok(None) => return Err(AppError("User not found".to_string(), StatusCode::NOT_FOUND)),
+        Err(e) => return Err(AppError(format!("Database error: {}", e), StatusCode::INTERNAL_SERVER_ERROR)),
+    };
+
+    // Remove sensitive information before sending response
+    let user_response = User {
+        password_hash: String::new(), // Don't send password hash
+        ..user
+    };
+
+    Ok(HttpResponse::Ok().json(user_response))
+}
+
+pub async fn update_profile(
+    session: web::Data<Session>,
+    user_id: web::Path<String>,
+    update_data: web::Json<UpdateProfileRequest>,
+) -> Result<HttpResponse, AppError> {
+    // First verify the user exists
+    let existing_user = match db::users::find_by_id(&session, &user_id).await {
+        Ok(Some(user)) => user,
+        Ok(None) => return Err(AppError("User not found".to_string(), StatusCode::NOT_FOUND)),
+        Err(e) => return Err(AppError(format!("Database error: {}", e), StatusCode::INTERNAL_SERVER_ERROR)),
+    };
+
+    // If password is being updated, hash it
+    let password_hash = if let Some(new_password) = &update_data.password {
+        hash(new_password, DEFAULT_COST)
+            .map_err(|e| AppError(format!("Password hashing error: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?
+    } else {
+        existing_user.password_hash
+    };
+
+    let updated_user = NewUser {
+        username: update_data.username.clone().unwrap_or(existing_user.username),
+        email: update_data.email.clone().unwrap_or(existing_user.email),
+        password_hash,
+    };
+
+    let user = db::users::update_user(&session, &user_id, updated_user).await?;
+
+    let user_response = User {
+        password_hash: String::new(),
+        ..user
+    };
+
+    Ok(HttpResponse::Ok().json(user_response))
+}
+
+pub async fn search_users(
+    session: web::Data<Session>,
+    query: web::Query<SearchQuery>,
+) -> Result<HttpResponse, AppError> {
+    let users = db::users::search_users(&session, &query.q).await?;
+
+
+    let users_response: Vec<User> = users
+        .into_iter()
+        .map(|user| User {
+            password_hash: String::new(), 
+            ..user
+        })
+        .collect();
+
+    Ok(HttpResponse::Ok().json(users_response))
+}
+
+#[derive(serde::Deserialize)]
+pub struct SearchQuery {
+    q: String,
 }

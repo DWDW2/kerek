@@ -29,3 +29,10 @@ pub struct AuthResponse {
     pub token: String,
     pub user: User,
 }
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateProfileRequest {
+    pub username: Option<String>,
+    pub email: Option<String>,
+    pub password: Option<String>,
+}

@@ -1,8 +1,9 @@
 mod db;
 mod models;
-mod handlers;
 mod error;
 mod middleware;
+mod users;
+mod conversations;
 
 use actix_cors::Cors;
 use actix_web::{web, App, HttpServer};
@@ -44,17 +45,21 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(jwt_secret.clone()))
             .service(
                 web::scope("/api/users")
-                    .route("/register", web::post().to(handlers::user::register))
-                    .route("/login", web::post().to(handlers::user::login)),
+                    .route("/register", web::post().to(users::handler::register))
+                    .route("/login", web::post().to(users::handler::login)),
             )
             .service(
                 web::scope("/api")
-                    .route("/profile/{id}", web::get().to(handlers::user::get_profile))
-                    .route("/profile/{id}", web::put().to(handlers::user::update_profile))
-                    .route("/search", web::get().to(handlers::user::search_users))
                     .wrap(Auth {
                         secret: jwt_secret.clone(),
                     })
+                    .service(
+                        web::scope("/users")
+                            .route("/profile/{id}", web::get().to(users::handler::get_profile))
+                            .route("/profile/{id}", web::put().to(users::handler::update_profile))
+                            .route("/profile/{search}", web::get().to(users::handler::search_users))
+                    )
+                    .configure(|cfg| conversations::config(cfg, jwt_secret.clone()))
             )
             .default_service(web::route().to(|| async {
                 actix_web::HttpResponse::NotFound().body("Route not found")

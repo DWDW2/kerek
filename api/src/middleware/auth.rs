@@ -6,7 +6,7 @@ use actix_web::{
     Error, HttpMessage,
 };
 use futures_util::future::LocalBoxFuture;
-use jsonwebtoken::{decode, errors::Error as JwtError, DecodingKey, Validation};
+use jsonwebtoken::{decode, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]

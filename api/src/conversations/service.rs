@@ -11,20 +11,19 @@ use uuid::Uuid;
 use scylla::value::CqlTimestamp;
 use actix_web::http::StatusCode;
 use futures_util::stream::TryStreamExt;
-
+use actix_web::web;
 pub struct ConversationService {
-    session: Session,
+    session: web::Data<Session>,
     create_conversation_stmt: PreparedStatement,
     get_conversation_stmt: PreparedStatement,
-    list_conversations_stmt: PreparedStatement,
+    list_conversations_stmt: PreparedStatement, 
     update_conversation_stmt: PreparedStatement,
     create_message_stmt: PreparedStatement,
     list_messages_stmt: PreparedStatement,
 }
 
 impl ConversationService {
-    pub async fn new(session: Session) -> Result<Self, AppError> {
-        // Prepare statements
+    pub async fn new(session: web::Data<Session>) -> Result<Self, AppError> {
         let create_conversation_stmt = session
             .prepare("INSERT INTO conversations (id, name, is_group, created_at, updated_at, participant_ids) VALUES (?, ?, ?, ?, ?, ?)")
             .await.unwrap();
@@ -68,7 +67,6 @@ impl ConversationService {
         let now = Utc::now().timestamp();
         let id = Uuid::new_v4().to_string();
         
-        // Ensure creator is included in participants
         let mut participant_ids = new_conversation.participant_ids;
         if !participant_ids.contains(&creator_id) {
             participant_ids.push(creator_id);
@@ -79,8 +77,8 @@ impl ConversationService {
                 &self.create_conversation_stmt,
                 (
                     id.clone(),
-                    new_conversation.name,
-                    new_conversation.is_group,
+                    &new_conversation.name,
+                    &new_conversation.is_group,
                     now,
                     now,
                     participant_ids,
@@ -95,7 +93,7 @@ impl ConversationService {
             created_at: now,
             updated_at: now,
             last_message_at: None,
-            participant_ids: !vec![],
+            participant_ids: vec!["24342".to_string(), "dfsf".to_string()],
         })
     }
 
@@ -190,7 +188,7 @@ impl ConversationService {
                     id,
                     conversation_id,
                     sender_id,
-                    new_message.content,
+                    new_message.content.clone(),
                     CqlTimestamp(now),
                     CqlTimestamp(now),
                     false,

@@ -4,7 +4,7 @@ mod error;
 mod middleware;
 mod users;
 mod conversations;
-
+mod utils;
 use actix_cors::Cors;
 use actix_web::{web, App, HttpServer};
 use dotenv::dotenv;
@@ -56,6 +56,7 @@ async fn main() -> std::io::Result<()> {
                     .wrap(Auth {
                         secret: jwt_secret.clone(),
                     })
+                    .route("/me", web::get().to(user_handler::get_me))
                     .route("/profile", web::get().to(user_handler::get_profile))
                     .route("/profile/{id}", web::put().to(user_handler::update_profile))
                     .route("/profile/{search}", web::get().to(user_handler::search_users))

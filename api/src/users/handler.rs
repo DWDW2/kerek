@@ -9,9 +9,14 @@ use serde::{Serialize, Deserialize};
 use crate::users::service;
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct UserId {
+    pub id: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
-    pub sub: String,  
-    pub exp: i64,      
+    pub sub: String,
+    pub exp: i64,
 }
 
 pub async fn register(
@@ -53,12 +58,12 @@ pub async fn login(
         user: user,
     }))
 }
+
 pub async fn get_profile(
     session: web::Data<Session>,
-    req: HttpRequest
+    user_id: web::Json<UserId>
 ) -> Result<impl Responder, AppError> {
-    println!("req: {:?}", req.extensions_mut().get::<Claims>().unwrap().sub);
-    let user = service::find_by_id(&session, &req.extensions_mut().get::<Claims>().unwrap().sub).await?
+    let user = service::find_by_id(&session, &user_id.id).await?
         .ok_or_else(|| AppError("User not found".to_string(), actix_web::http::StatusCode::NOT_FOUND))?;
 
     Ok(HttpResponse::Ok().json(user.to_profile()))
@@ -66,10 +71,10 @@ pub async fn get_profile(
 
 pub async fn update_profile(
     session: web::Data<Session>,
-    claims: web::Json<Claims>,
+    user_id: web::Json<UserId>,
     update_data: web::Json<UpdateProfileRequest>,
 ) -> Result<impl Responder, AppError> {
-    let user = service::find_by_id(&session, &claims.sub).await?
+    let user = service::find_by_id(&session, &user_id.id).await?
         .ok_or_else(|| AppError("User not found".to_string(), actix_web::http::StatusCode::NOT_FOUND))?;
 
     let updated_user = NewUser {
@@ -93,10 +98,41 @@ pub async fn search_users(
 
 pub async fn logout(
     session: web::Data<Session>,
-    claims: web::Json<Claims>,  
+    user_id: web::Json<UserId>,  
 ) -> Result<impl Responder, AppError> {
-    service::update_user_status(&session, &claims.sub, false).await?;
+    service::update_user_status(&session, &user_id.id, false).await?;
     Ok(HttpResponse::Ok().finish())
+}
+
+pub async fn get_me(
+    session: web::Data<Session>,
+    req: HttpRequest,
+) -> Result<impl Responder, AppError> {
+    let auth_header = req.headers()
+        .get("Authorization")
+        .ok_or_else(|| AppError("Missing Authorization header".to_string(), actix_web::http::StatusCode::UNAUTHORIZED))?
+        .to_str()
+        .map_err(|_| AppError("Invalid Authorization header".to_string(), actix_web::http::StatusCode::UNAUTHORIZED))?;
+
+    let token = auth_header
+        .strip_prefix("Bearer ")
+        .ok_or_else(|| AppError("Invalid token format".to_string(), actix_web::http::StatusCode::UNAUTHORIZED))?;
+
+    let secret = std::env::var("JWT_SECRET").unwrap_or_else(|_| "your-secret-key".to_string());
+    let validation = jsonwebtoken::Validation::default();
+    
+    let claims = jsonwebtoken::decode::<Claims>(
+        token,
+        &jsonwebtoken::DecodingKey::from_secret(secret.as_bytes()),
+        &validation,
+    )
+    .map_err(|e| AppError(format!("Invalid token: {}", e), actix_web::http::StatusCode::UNAUTHORIZED))?
+    .claims;
+
+    let user = service::find_by_id(&session, &claims.sub).await?
+        .ok_or_else(|| AppError("User not found".to_string(), actix_web::http::StatusCode::NOT_FOUND))?;
+
+    Ok(HttpResponse::Ok().json(user.to_profile()))
 }
 
 #[derive(serde::Deserialize)]

@@ -1,17 +1,12 @@
-use actix_web::{web, HttpResponse, Scope};
+use actix_web::{web, HttpResponse, Scope, HttpRequest};
 use scylla::client::session::Session;
-use crate::models::{
+use crate::{models::{
     conversation::{Conversation, NewConversation},
     message::{Message, NewMessage},
-};
+}, utils::jwt::get_user_id_from_header};
 use crate::error::AppError;
 use crate::conversations::service::ConversationService;
 use serde::{Serialize, Deserialize};
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Claims {
-    pub sub: String,  
-    pub exp: i64,      
-}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ListMessagesRequest {
@@ -20,23 +15,25 @@ pub struct ListMessagesRequest {
 
 pub async fn list_conversations(
     session: web::Data<Session>,
-    claims: web::Json<Claims>,
+    req: HttpRequest,
 ) -> Result<HttpResponse, AppError> {
+    let user_id = get_user_id_from_header(req).unwrap();
     let service = ConversationService::new(session).await?;
-    let conversations = service.list_conversations(&claims.sub).await?;
+    let conversations = service.list_conversations(&user_id).await?;
     Ok(HttpResponse::Ok().json(conversations))
 }
 
 pub async fn create_conversation(
     session: web::Data<Session>,
-    claims: web::Json<Claims>,
+    req: HttpRequest,
     new_conversation: web::Json<NewConversation>,
 ) -> Result<HttpResponse, AppError> {
+    let user_id = get_user_id_from_header(req).unwrap();
     let service = ConversationService::new(session).await?;
     let conversation = service
-        .create_conversation(new_conversation.into_inner(), claims.sub.clone())
+        .create_conversation(new_conversation.into_inner(), user_id)
         .await?;
-    Ok(HttpResponse::Created().json(conversation))
+    Ok(HttpResponse::Created().json(conversation))  
 }
 
 pub async fn get_conversation(
@@ -73,13 +70,14 @@ pub async fn list_messages(
 
 pub async fn send_message(
     session: web::Data<Session>,
-    claims: web::Json<Claims>,
+    req: HttpRequest,
     conversation_id: web::Path<String>,
     new_message: web::Json<NewMessage>,
 ) -> Result<HttpResponse, AppError> {
+    let user_id = get_user_id_from_header(req).unwrap();
     let service = ConversationService::new(session).await?;
     let message = service
-        .send_message(&conversation_id, &claims.sub, new_message.into_inner())
+        .send_message(&conversation_id, &user_id, new_message.into_inner())
         .await?;
     Ok(HttpResponse::Created().json(message))
 }

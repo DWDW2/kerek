@@ -6,57 +6,20 @@ use crate::models::{
 };
 use crate::error::AppError;
 use chrono::Utc;
-use scylla::statement::prepared::PreparedStatement;
 use uuid::Uuid;
 use scylla::value::CqlTimestamp;
 use actix_web::http::StatusCode;
 use futures_util::stream::TryStreamExt;
 use actix_web::web;
+use scylla::statement::Statement;
+
 pub struct ConversationService {
     session: web::Data<Session>,
-    create_conversation_stmt: PreparedStatement,
-    get_conversation_stmt: PreparedStatement,
-    list_conversations_stmt: PreparedStatement, 
-    update_conversation_stmt: PreparedStatement,
-    create_message_stmt: PreparedStatement,
-    list_messages_stmt: PreparedStatement,
 }
 
 impl ConversationService {
     pub async fn new(session: web::Data<Session>) -> Result<Self, AppError> {
-        let create_conversation_stmt = session
-            .prepare("INSERT INTO conversations (id, name, is_group, created_at, updated_at, participant_ids) VALUES (?, ?, ?, ?, ?, ?)")
-            .await.unwrap();
-            
-        let get_conversation_stmt = session
-            .prepare("SELECT * FROM conversations WHERE id = ?")
-            .await.unwrap();
-            
-        let list_conversations_stmt = session
-            .prepare("SELECT * FROM conversations WHERE participant_ids CONTAINS ?")
-            .await.unwrap();
-            
-        let update_conversation_stmt = session
-            .prepare("UPDATE conversations SET name = ?, updated_at = ? WHERE id = ?")
-            .await.unwrap();
-            
-        let create_message_stmt = session
-            .prepare("INSERT INTO messages (id, conversation_id, sender_id, content, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)")
-            .await.unwrap();
-            
-        let list_messages_stmt = session
-            .prepare("SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at DESC LIMIT ?")
-            .await.unwrap();
-
-        Ok(Self {
-            session,
-            create_conversation_stmt,
-            get_conversation_stmt,
-            list_conversations_stmt,
-            update_conversation_stmt,
-            create_message_stmt,
-            list_messages_stmt,
-        })
+        Ok(Self { session })
     }
 
     pub async fn create_conversation(
@@ -65,60 +28,108 @@ impl ConversationService {
         creator_id: String,
     ) -> Result<Conversation, AppError> {
         let now = Utc::now().timestamp();
-        let id = Uuid::new_v4().to_string();
-        
-        let mut participant_ids = new_conversation.participant_ids;
-        if !participant_ids.contains(&creator_id) {
-            participant_ids.push(creator_id);
+        let conversation_id = Uuid::new_v4();
+        let creator_uuid = Uuid::parse_str(&creator_id)
+            .map_err(|e| AppError(format!("Invalid creator ID: {}", e), StatusCode::BAD_REQUEST))?;
+
+        let create_conv_stmt = Statement::new(
+            "INSERT INTO conversations (conversation_id, title, created_at, updated_at) VALUES (?, ?, ?, ?)"
+        );
+        self.session.query_unpaged(
+            create_conv_stmt,
+            (
+                conversation_id,
+                &new_conversation.name,
+                CqlTimestamp(now),
+                CqlTimestamp(now),
+            )
+        ).await.map_err(|e| AppError(format!("Failed to create conversation: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?;
+
+        let add_creator_stmt = Statement::new(
+            "INSERT INTO conversation_participants (conversation_id, user_id, joined_at) VALUES (?, ?, ?)"
+        );
+        self.session.query_unpaged(
+            add_creator_stmt,
+            (conversation_id, creator_uuid, CqlTimestamp(now))
+        ).await.map_err(|e| AppError(format!("Failed to add creator to conversation: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?;
+
+        for participant_id in new_conversation.participant_ids {
+            if participant_id != creator_id {
+                let participant_uuid = Uuid::parse_str(&participant_id)
+                    .map_err(|e| AppError(format!("Invalid participant ID: {}", e), StatusCode::BAD_REQUEST))?;
+                
+                let add_participant_stmt = Statement::new(
+                    "INSERT INTO conversation_participants (conversation_id, user_id, joined_at) VALUES (?, ?, ?)"
+                );
+                self.session.query_unpaged(
+                    add_participant_stmt,
+                    (conversation_id, participant_uuid, CqlTimestamp(now))
+                ).await.map_err(|e| AppError(format!("Failed to add participant to conversation: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?;
+            }
         }
 
-        self.session
-            .execute_unpaged(
-                &self.create_conversation_stmt,
-                (
-                    id.clone(),
-                    &new_conversation.name,
-                    &new_conversation.is_group,
-                    now,
-                    now,
-                    participant_ids,
-                ),
-            )
-            .await.unwrap();
+        let participants = self.get_conversation_participants(&conversation_id.to_string()).await?;
 
         Ok(Conversation {
-            id,
+            id: conversation_id.to_string(),
             name: new_conversation.name,
-            is_group: new_conversation.is_group,
+            is_group: participants.len() > 1,
             created_at: now,
             updated_at: now,
             last_message_at: None,
-            participant_ids: vec!["24342".to_string(), "dfsf".to_string()],
+            participant_ids: participants.into_iter().map(|p| p.to_string()).collect(),
         })
     }
 
+    async fn get_conversation_participants(&self, conversation_id: &str) -> Result<Vec<Uuid>, AppError> {
+        let conv_uuid = Uuid::parse_str(conversation_id)
+            .map_err(|e| AppError(format!("Invalid conversation ID: {}", e), StatusCode::BAD_REQUEST))?;
+
+        let stmt = Statement::new(
+            "SELECT user_id, joined_at FROM conversation_participants WHERE conversation_id = ?"
+        );
+        let mut iter = self.session.query_iter(
+            stmt,
+            (conv_uuid,)
+        ).await
+        .map_err(|e| AppError(format!("Failed to get participants: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?
+        .rows_stream::<(Uuid, CqlTimestamp)>()
+        .map_err(|e| AppError(format!("Failed to stream participants: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?;
+
+        let mut participants = Vec::new();
+        while let Some((user_id, _)) = iter.try_next().await
+            .map_err(|e| AppError(format!("Failed to process participant: {}", e), StatusCode::INTERNAL_SERVER_ERROR))? {
+            participants.push(user_id);
+        }
+        Ok(participants)
+    }
+
     pub async fn get_conversation(&self, id: &str) -> Result<Conversation, AppError> {
-        let mut iter = self.session
-            .query_iter(
-                "SELECT id, name, is_group, created_at, updated_at, last_message_at, participant_ids FROM conversations WHERE id = ?",
-                (id,),
-            )
-            .await
-            .map_err(|e| AppError(format!("Failed to prepare query: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?
-            .rows_stream::<(Uuid, Option<String>, bool, CqlTimestamp, CqlTimestamp, Option<CqlTimestamp>, Vec<String>)>()
-            .map_err(|e| AppError(format!("Failed to get rows stream: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?;
+        let conversation_id = Uuid::parse_str(id)
+            .map_err(|e| AppError(format!("Invalid conversation ID: {}", e), StatusCode::BAD_REQUEST))?;
+
+        let stmt = Statement::new(
+            "SELECT conversation_id, title, created_at, updated_at FROM conversations WHERE conversation_id = ?"
+        );
+        let mut iter = self.session.query_iter(
+            stmt,
+            (conversation_id,)
+        ).await
+        .map_err(|e| AppError(format!("Failed to get conversation: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?
+        .rows_stream::<(Uuid, Option<String>, CqlTimestamp, CqlTimestamp)>()
+        .map_err(|e| AppError(format!("Failed to stream conversation: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?;
 
         match iter.try_next().await {
-            Ok(Some(row)) => {
-                let (id, name, is_group, created_at, updated_at, last_message_at, participant_ids) = row;
+            Ok(Some((id, title, created_at, updated_at))) => {
+                let participants = self.get_conversation_participants(&id.to_string()).await?;
                 Ok(Conversation {
                     id: id.to_string(),
-                    name,
-                    is_group,
+                    name: title,
+                    is_group: participants.len() > 1,
                     created_at: created_at.0,
                     updated_at: updated_at.0,
-                    last_message_at: last_message_at.map(|ts| ts.0),
-                    participant_ids,
+                    last_message_at: None,
+                    participant_ids: participants.into_iter().map(|p| p.to_string()).collect(),
                 })
             }
             Ok(None) => Err(AppError("Conversation not found".into(), StatusCode::NOT_FOUND)),
@@ -127,27 +138,35 @@ impl ConversationService {
     }
 
     pub async fn list_conversations(&self, user_id: &str) -> Result<Vec<Conversation>, AppError> {
-        let mut iter = self.session
-            .query_iter(
-                "SELECT id, name, is_group, created_at, updated_at, last_message_at, participant_ids FROM conversations WHERE participant_ids CONTAINS ?",
-                (user_id,),
-            )
-            .await
-            .map_err(|e| AppError(format!("Failed to prepare query: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?
-            .rows_stream::<(Uuid, Option<String>, bool, CqlTimestamp, CqlTimestamp, Option<CqlTimestamp>, Vec<String>)>()
-            .map_err(|e| AppError(format!("Failed to get rows stream: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?;
+        let user_uuid = Uuid::parse_str(user_id)
+            .map_err(|e| AppError(format!("Invalid user ID: {}", e), StatusCode::BAD_REQUEST))?;
+
+        let stmt = Statement::new(
+            "SELECT c.conversation_id, c.title, c.created_at, c.updated_at 
+             FROM conversations c 
+             JOIN conversation_participants cp ON c.conversation_id = cp.conversation_id 
+             WHERE cp.user_id = ?"
+        );
+        let mut iter = self.session.query_iter(
+            stmt,
+            (user_uuid,)
+        ).await
+        .map_err(|e| AppError(format!("Failed to list conversations: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?
+        .rows_stream::<(Uuid, Option<String>, CqlTimestamp, CqlTimestamp)>()
+        .map_err(|e| AppError(format!("Failed to stream conversations: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?;
 
         let mut conversations = Vec::new();
-        while let Some(row) = iter.try_next().await.map_err(|e| AppError(format!("Failed to process conversation: {}", e), StatusCode::INTERNAL_SERVER_ERROR))? {
-            let (id, name, is_group, created_at, updated_at, last_message_at, participant_ids) = row;
+        while let Some((id, title, created_at, updated_at)) = iter.try_next().await
+            .map_err(|e| AppError(format!("Failed to process conversation: {}", e), StatusCode::INTERNAL_SERVER_ERROR))? {
+            let participants = self.get_conversation_participants(&id.to_string()).await?;
             conversations.push(Conversation {
                 id: id.to_string(),
-                name,
-                is_group,
+                name: title,
+                is_group: participants.len() > 1,
                 created_at: created_at.0,
                 updated_at: updated_at.0,
-                last_message_at: last_message_at.map(|ts| ts.0),
-                participant_ids,
+                last_message_at: None,
+                participant_ids: participants.into_iter().map(|p| p.to_string()).collect(),
             });
         }
 
@@ -159,15 +178,18 @@ impl ConversationService {
         id: &str,
         name: Option<String>,
     ) -> Result<Conversation, AppError> {
+        let conversation_id = Uuid::parse_str(id)
+            .map_err(|e| AppError(format!("Invalid conversation ID: {}", e), StatusCode::BAD_REQUEST))?;
         let now = Utc::now().timestamp();
         
-        self.session
-            .query_unpaged(
-                "UPDATE conversations SET name = ?, updated_at = ? WHERE id = ?",
-                (name.clone(), CqlTimestamp(now), id),
-            )
-            .await
-            .map_err(|e| AppError(format!("Failed to update conversation: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?;
+        let stmt = Statement::new(
+            "UPDATE conversations SET title = ?, updated_at = ? WHERE conversation_id = ?"
+        );
+        self.session.query_unpaged(
+            stmt,
+            (name.clone(), CqlTimestamp(now), conversation_id)
+        ).await
+        .map_err(|e| AppError(format!("Failed to update conversation: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?;
 
         self.get_conversation(id).await
     }
@@ -178,28 +200,32 @@ impl ConversationService {
         sender_id: &str,
         new_message: NewMessage,
     ) -> Result<Message, AppError> {
+        let conversation_uuid = Uuid::parse_str(conversation_id)
+            .map_err(|e| AppError(format!("Invalid conversation ID: {}", e), StatusCode::BAD_REQUEST))?;
+        let sender_uuid = Uuid::parse_str(sender_id)
+            .map_err(|e| AppError(format!("Invalid sender ID: {}", e), StatusCode::BAD_REQUEST))?;
         let now = Utc::now().timestamp();
-        let id = Uuid::new_v4();
+        let message_id = Uuid::new_v4();
 
-        self.session
-            .query_unpaged(
-                "INSERT INTO messages (id, conversation_id, sender_id, content, created_at, updated_at, is_edited, is_deleted) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                (
-                    id,
-                    conversation_id,
-                    sender_id,
-                    new_message.content.clone(),
-                    CqlTimestamp(now),
-                    CqlTimestamp(now),
-                    false,
-                    false,
-                ),
+        let stmt = Statement::new(
+            "INSERT INTO messages (conversation_id, message_id, sender_id, content, sent_at, edited_at) 
+             VALUES (?, ?, ?, ?, ?, ?)"
+        );
+        self.session.query_unpaged(
+            stmt,
+            (
+                conversation_uuid,
+                message_id,
+                sender_uuid,
+                new_message.content.clone(),
+                CqlTimestamp(now),
+                CqlTimestamp(now),
             )
-            .await
-            .map_err(|e| AppError(format!("Failed to send message: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?;
+        ).await
+        .map_err(|e| AppError(format!("Failed to send message: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?;
 
         Ok(Message {
-            id: id.to_string(),
+            id: message_id.to_string(),
             conversation_id: conversation_id.to_string(),
             sender_id: sender_id.to_string(),
             content: new_message.content,
@@ -215,28 +241,36 @@ impl ConversationService {
         conversation_id: &str,
         limit: i32,
     ) -> Result<Vec<Message>, AppError> {
-        let mut iter = self.session
-            .query_iter(
-                "SELECT id, conversation_id, sender_id, content, created_at, updated_at, is_edited, is_deleted FROM messages WHERE conversation_id = ? ORDER BY created_at DESC LIMIT ?",
-                (conversation_id, limit),
-            )
-            .await
-            .map_err(|e| AppError(format!("Failed to prepare query: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?
-            .rows_stream::<(Uuid, Uuid, Uuid, String, CqlTimestamp, CqlTimestamp, bool, bool)>()
-            .map_err(|e| AppError(format!("Failed to get rows stream: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?;
+        let conversation_uuid = Uuid::parse_str(conversation_id)
+            .map_err(|e| AppError(format!("Invalid conversation ID: {}", e), StatusCode::BAD_REQUEST))?;
+
+        let stmt = Statement::new(
+            "SELECT conversation_id, message_id, sender_id, content, sent_at, edited_at 
+             FROM messages 
+             WHERE conversation_id = ? 
+             ORDER BY message_id DESC 
+             LIMIT ?"
+        );
+        let mut iter = self.session.query_iter(
+            stmt,
+            (conversation_uuid, limit)
+        ).await
+        .map_err(|e| AppError(format!("Failed to list messages: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?
+        .rows_stream::<(Uuid, Uuid, Uuid, String, CqlTimestamp, CqlTimestamp)>()
+        .map_err(|e| AppError(format!("Failed to stream messages: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?;
 
         let mut messages = Vec::new();
-        while let Some(row) = iter.try_next().await.map_err(|e| AppError(format!("Failed to process message: {}", e), StatusCode::INTERNAL_SERVER_ERROR))? {
-            let (id, conversation_id, sender_id, content, created_at, updated_at, is_edited, is_deleted) = row;
+        while let Some((conv_id, msg_id, sender_id, content, sent_at, edited_at)) = iter.try_next().await
+            .map_err(|e| AppError(format!("Failed to process message: {}", e), StatusCode::INTERNAL_SERVER_ERROR))? {
             messages.push(Message {
-                id: id.to_string(),
-                conversation_id: conversation_id.to_string(),
+                id: msg_id.to_string(),
+                conversation_id: conv_id.to_string(),
                 sender_id: sender_id.to_string(),
                 content,
-                created_at: created_at.0,
-                updated_at: updated_at.0,
-                is_edited,
-                is_deleted,
+                created_at: sent_at.0,
+                updated_at: edited_at.0,
+                is_edited: sent_at.0 != edited_at.0,
+                is_deleted: false,
             });
         }
 

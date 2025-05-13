@@ -2,9 +2,9 @@ use actix_web::HttpRequest;
 use chrono::{Utc, Duration};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation, TokenData};
 use serde::{Serialize, Deserialize};
-
+use std::env;
 use crate::error::AppError;
-
+use actix_web::http::StatusCode;
 #[derive(Serialize, Deserialize)]
 pub struct Claims {
     pub exp: usize, 
@@ -38,20 +38,27 @@ pub fn verify_token(token: String) -> Result<TokenData<Claims>, ()> {
     Ok(claims)
 }
 
- pub fn get_user_id_from_header(req: HttpRequest) -> Result<String, ()> {
+pub fn get_user_id_from_token(req: &HttpRequest) -> Result<String, AppError> {
     let auth_header = req.headers()
         .get("Authorization")
-        .ok_or_else(|| AppError("Missing Authorization header".to_string(), actix_web::http::StatusCode::UNAUTHORIZED)).unwrap()
+        .ok_or_else(|| AppError("Missing Authorization header".to_string(), StatusCode::UNAUTHORIZED))?
         .to_str()
-        .map_err(|_| AppError("Invalid Authorization header".to_string(), actix_web::http::StatusCode::UNAUTHORIZED)).unwrap();
+        .map_err(|_| AppError("Invalid Authorization header".to_string(), StatusCode::UNAUTHORIZED))?;
 
     let token = auth_header
         .strip_prefix("Bearer ")
-        .ok_or_else(|| AppError("Invalid token format".to_string(), actix_web::http::StatusCode::UNAUTHORIZED)).unwrap();
+        .ok_or_else(|| AppError("Invalid token format".to_string(), StatusCode::UNAUTHORIZED))?;
 
-    let claims = verify_token(token.to_string())
-        .map_err(|_| AppError("Invalid token".to_string(), actix_web::http::StatusCode::UNAUTHORIZED)).unwrap();
+    let secret = env::var("JWT_SECRET").unwrap_or_else(|_| "your-secret-key".to_string());
+    let validation = Validation::default();
+    
+    let claims = decode::<Claims>(
+        token,
+        &DecodingKey::from_secret(secret.as_bytes()),
+        &validation,
+    )
+    .map_err(|e| AppError(format!("Invalid token: {}", e), StatusCode::UNAUTHORIZED))?
+    .claims;
 
-    Ok(claims.claims.sub)
-
- }
+    Ok(claims.sub)
+}

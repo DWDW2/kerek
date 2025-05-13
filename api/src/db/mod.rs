@@ -22,6 +22,7 @@ pub async fn setup_database(session: &web::Data<Session>, new: bool) -> Result<(
         session.query_unpaged("DROP TABLE IF EXISTS conversation_participants", &[]).await?;
         session.query_unpaged("DROP TABLE IF EXISTS conversations", &[]).await?;
         session.query_unpaged("DROP TABLE IF EXISTS users", &[]).await?;
+        session.query_unpaged("DROP TABLE IF EXISTS user_conversations", &[]).await?;
     }
     
     session.query_unpaged(
@@ -57,6 +58,16 @@ pub async fn setup_database(session: &web::Data<Session>, new: bool) -> Result<(
             user_id UUID,
             joined_at TIMESTAMP,
             PRIMARY KEY (conversation_id, user_id)
+        )",
+        &[]
+    ).await?;
+
+    session.query_unpaged(
+        "CREATE TABLE IF NOT EXISTS user_conversations (
+            user_id UUID,
+            conversation_id UUID,
+            joined_at TIMESTAMP,
+            PRIMARY KEY (user_id, conversation_id)
         )",
         &[]
     ).await?;

@@ -20,7 +20,6 @@ pub struct ListMessagesRequest {
 }
 
 
-
 pub async fn list_conversations(
     session: web::Data<Session>,
     req: HttpRequest,

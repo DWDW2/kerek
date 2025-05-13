@@ -88,15 +88,15 @@ pub async fn get_profile(
     session: web::Data<Session>,
     user_id: web::Path<String>,
 ) -> Result<HttpResponse, AppError> {
+    println!("user_id: {}", user_id);
     let user = match db::users::find_by_id(&session, &user_id).await {
         Ok(Some(user)) => user,
         Ok(None) => return Err(AppError("User not found".to_string(), StatusCode::NOT_FOUND)),
         Err(e) => return Err(AppError(format!("Database error: {}", e), StatusCode::INTERNAL_SERVER_ERROR)),
     };
 
-    // Remove sensitive information before sending response
     let user_response = User {
-        password_hash: String::new(), // Don't send password hash
+        password_hash: String::new(), 
         ..user
     };
 
@@ -108,14 +108,12 @@ pub async fn update_profile(
     user_id: web::Path<String>,
     update_data: web::Json<UpdateProfileRequest>,
 ) -> Result<HttpResponse, AppError> {
-    // First verify the user exists
     let existing_user = match db::users::find_by_id(&session, &user_id).await {
         Ok(Some(user)) => user,
         Ok(None) => return Err(AppError("User not found".to_string(), StatusCode::NOT_FOUND)),
         Err(e) => return Err(AppError(format!("Database error: {}", e), StatusCode::INTERNAL_SERVER_ERROR)),
     };
 
-    // If password is being updated, hash it
     let password_hash = if let Some(new_password) = &update_data.password {
         hash(new_password, DEFAULT_COST)
             .map_err(|e| AppError(format!("Password hashing error: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?

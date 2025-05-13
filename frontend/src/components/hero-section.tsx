@@ -14,14 +14,14 @@ export default function HeroSection() {
     >
       <section className="w-full max-w-[90vw] md:max-w-3xl">
         <h1 className="text-3xl md:text-5xl lg:text-7xl font-bold text-white tracking-tight text-center">
-          Get ideas, content, and{" "}
-          <span className="font-serif italic text-primary">inspiration</span>{" "}
-          that you really need
+          Next{" "}
+          <span className="font-serif italic text-primary">generation</span>{" "}
+          messaging with you
         </h1>
       </section>
       <section className="flex flex-col md:flex-row gap-3 md:gap-4 w-full max-w-[90vw] md:w-fit">
         <AnimatedButton
-          onClick={() => router.push("/dashboard")}
+          onClick={() => router.push("/chat")}
           className="text-neutral-100 font-bold font-mono"
         >
           Get Started

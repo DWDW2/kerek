@@ -1,4 +1,4 @@
-use actix_web::{web, HttpResponse, Responder};
+use actix_web::{web, HttpMessage, HttpRequest, HttpResponse, Responder};
 use bcrypt::verify;
 use jsonwebtoken::{encode, Header, EncodingKey};
 use chrono::{Utc, Duration};
@@ -55,9 +55,10 @@ pub async fn login(
 }
 pub async fn get_profile(
     session: web::Data<Session>,
-    claims: web::Json<Claims>,
+    req: HttpRequest
 ) -> Result<impl Responder, AppError> {
-    let user = service::find_by_id(&session, &claims.sub).await?
+    println!("req: {:?}", req.extensions_mut().get::<Claims>().unwrap().sub);
+    let user = service::find_by_id(&session, &req.extensions_mut().get::<Claims>().unwrap().sub).await?
         .ok_or_else(|| AppError("User not found".to_string(), actix_web::http::StatusCode::NOT_FOUND))?;
 
     Ok(HttpResponse::Ok().json(user.to_profile()))

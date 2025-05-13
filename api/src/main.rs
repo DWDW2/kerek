@@ -11,6 +11,9 @@ use dotenv::dotenv;
 use env_logger::Env;
 use middleware::auth::Auth;
 use std::env;
+use actix_web::middleware::Logger;
+use crate::users::handler as user_handler;
+use crate::conversations::handler as conversation_handler;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -20,7 +23,7 @@ async fn main() -> std::io::Result<()> {
     let session = db::connect().await.unwrap();
     let session_data = web::Data::new(session);
 
-    db::setup_database(&session_data).await.unwrap();
+    db::setup_database(&session_data, false).await.unwrap();
 
     let host = env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
     let port = env::var("PORT")
@@ -38,28 +41,33 @@ async fn main() -> std::io::Result<()> {
             .max_age(3600);
 
         App::new()
-            .wrap(actix_web::middleware::Logger::default())
-            .wrap(actix_web::middleware::Logger::new("%a %r %s %b %D"))
+            .wrap(Logger::default())
+            .wrap(Logger::new("%a %r %s %b %D"))
             .wrap(cors)
             .app_data(session_data.clone())
             .app_data(web::Data::new(jwt_secret.clone()))
             .service(
                 web::scope("/api/users")
-                    .route("/register", web::post().to(users::handler::register))
-                    .route("/login", web::post().to(users::handler::login)),
+                    .route("/register", web::post().to(user_handler::register))
+                    .route("/login", web::post().to(user_handler::login)),
             )
             .service(
                 web::scope("/api")
                     .wrap(Auth {
                         secret: jwt_secret.clone(),
                     })
+                    .route("/profile", web::get().to(user_handler::get_profile))
+                    .route("/profile/{id}", web::put().to(user_handler::update_profile))
+                    .route("/profile/{search}", web::get().to(user_handler::search_users))
                     .service(
-                        web::scope("/users")
-                            .route("/profile/{id}", web::get().to(users::handler::get_profile))
-                            .route("/profile/{id}", web::put().to(users::handler::update_profile))
-                            .route("/profile/{search}", web::get().to(users::handler::search_users))
+                        web::scope("/conversations")
+                            .route("", web::post().to(conversation_handler::create_conversation))
+                            .route("", web::get().to(conversation_handler::list_conversations))
+                            .route("/{id}", web::get().to(conversation_handler::get_conversation))
+                            .route("/{id}", web::put().to(conversation_handler::update_conversation))
+                            .route("/{id}/messages", web::post().to(conversation_handler::send_message))
+                            .route("/{id}/messages", web::get().to(conversation_handler::list_messages))
                     )
-                    .configure(|cfg| conversations::config(cfg, jwt_secret.clone()))
             )
             .default_service(web::route().to(|| async {
                 actix_web::HttpResponse::NotFound().body("Route not found")

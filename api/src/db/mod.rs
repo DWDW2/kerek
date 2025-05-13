@@ -8,13 +8,22 @@ pub async fn connect() -> Result<Session, NewSessionError> {
     Ok(session)
 }
 
-pub async fn setup_database(session: &web::Data<Session>) -> Result<(), ExecutionError> {
+pub async fn setup_database(session: &web::Data<Session>, new: bool) -> Result<(), ExecutionError> {
     session.query_unpaged(
         "CREATE KEYSPACE IF NOT EXISTS messenger WITH REPLICATION = { 'class' : 'SimpleStrategy', 'replication_factor' : 1 }",
         &[]
     ).await?;
     
     session.query_unpaged("USE messenger", &[]).await?;
+    
+    if new {
+
+        session.query_unpaged("DROP TABLE IF EXISTS messages", &[]).await?;
+        session.query_unpaged("DROP TABLE IF EXISTS user_conversations", &[]).await?;
+        session.query_unpaged("DROP TABLE IF EXISTS conversation_participants", &[]).await?;
+        session.query_unpaged("DROP TABLE IF EXISTS conversations", &[]).await?;
+        session.query_unpaged("DROP TABLE IF EXISTS users", &[]).await?;
+    }
     
     session.query_unpaged(
         "CREATE TABLE IF NOT EXISTS users (
@@ -23,7 +32,9 @@ pub async fn setup_database(session: &web::Data<Session>) -> Result<(), Executio
             email TEXT,
             password_hash TEXT,
             created_at TIMESTAMP,
-            updated_at TIMESTAMP 
+            updated_at TIMESTAMP,
+            last_seen_at TIMESTAMP,
+            is_online BOOLEAN
         )",
         &[]
     ).await?;

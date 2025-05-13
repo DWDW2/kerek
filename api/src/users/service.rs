@@ -1,6 +1,7 @@
 use actix_web::web;
 use scylla::client::session::Session;
 use futures_util::stream::TryStreamExt;
+
 use actix_web::http::StatusCode;
 use scylla::value::CqlTimestamp;
 use uuid::Uuid;
@@ -14,10 +15,10 @@ pub async fn create(session: &web::Data<Session>, new_user: NewUser) -> Result<U
     let password_hash = bcrypt::hash(&new_user.password, bcrypt::DEFAULT_COST)
         .map_err(|e| AppError(format!("Password hashing error: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?;
 
-    let statement = Statement::new("INSERT INTO users (id, username, email, password_hash, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)");
+    let statement = Statement::new("INSERT INTO users (id, username, email, password_hash, created_at, updated_at, last_seen_at, is_online) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
     session.query_unpaged(
         statement,
-        (&id, &new_user.username, &new_user.email, &password_hash, CqlTimestamp(now), CqlTimestamp(now))
+        (&id, &new_user.username, &new_user.email, &password_hash, CqlTimestamp(now), CqlTimestamp(now), None::<CqlTimestamp>, false)
     ).await.map_err(|e| AppError(format!("Failed to create user: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?;
     
     Ok(User {
@@ -34,7 +35,7 @@ pub async fn create(session: &web::Data<Session>, new_user: NewUser) -> Result<U
 
 pub async fn find_by_email(session: &web::Data<Session>, email: &str) -> Result<Option<User>, AppError> {
     let mut iter = session.query_iter(
-        "SELECT id, username, email, password_hash, created_at, updated_at FROM users WHERE email = ?",
+        "SELECT id, username, email, password_hash, created_at, updated_at, last_seen_at, is_online FROM users WHERE email = ?",
         (email,),
     ).await.map_err(|e| AppError(format!("Failed to prepare query: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?
         .rows_stream::<(Uuid, String, String, String, CqlTimestamp, CqlTimestamp, Option<CqlTimestamp>, bool)>()

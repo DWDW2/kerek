@@ -19,6 +19,11 @@ pub struct ListMessagesRequest {
     pub limit: Option<i32>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ListMessagesQuery {
+    pub limit: Option<i32>,
+}
+
 
 pub async fn list_conversations(
     session: web::Data<Session>,
@@ -76,18 +81,17 @@ pub async fn list_messages(
     session: web::Data<Session>,
     req: HttpRequest,
     conversation_id: web::Path<String>,
-    request: web::Json<ListMessagesRequest>,
+    query: web::Query<ListMessagesQuery>,
 ) -> Result<HttpResponse, AppError> {
     let user_id = get_user_id_from_token(&req)?;
     let service = ConversationService::new(session).await?;
     
-
     let conversation = service.get_conversation(&conversation_id).await?;
     if !conversation.participant_ids.contains(&user_id) {
         return Err(AppError("Not authorized to view messages in this conversation".to_string(), StatusCode::FORBIDDEN));
     }
 
-    let limit = request.limit.unwrap_or(50);
+    let limit = query.limit.unwrap_or(50);
     let messages = service.list_messages(&conversation_id, limit).await?;
     Ok(HttpResponse::Ok().json(messages))
 }

@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatDistanceToNow } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/lib/auth-context";
 
@@ -46,7 +45,7 @@ export function ConversationDetail() {
           `${process.env.NEXT_PUBLIC_API_URL}/conversations/${id}`,
           {
             headers: {
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
+              Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
             },
           }
         );
@@ -64,11 +63,14 @@ export function ConversationDetail() {
   useEffect(() => {
     const loadMessages = async () => {
       try {
-        const response = await fetch(`/api/conversations/${id}/messages`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        });
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/conversations/${id}/messages?limit=20`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+            },
+          }
+        );
         if (!response.ok) throw new Error("Failed to load messages");
         const data = await response.json();
         setMessages(data);
@@ -83,12 +85,10 @@ export function ConversationDetail() {
   }, [id]);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("auth_token");
     if (!token) return;
 
-    const ws = new WebSocket(
-      `ws://localhost:8080/api/conversations/${id}/ws?token=${token}`
-    );
+    const ws = new WebSocket(`ws://localhost:8080/ws/${id}`);
 
     ws.onopen = () => {
       console.log("WebSocket connected");

@@ -64,14 +64,22 @@ export function UserSearch() {
 
   const startConversation = async (userId: string) => {
     try {
-      const response = await fetch("/api/conversations", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify({ participantId: userId }),
-      });
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/conversations`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+          },
+          body: JSON.stringify({
+            participant_id: userId,
+            name: "New Conversation",
+            is_group: false,
+            participant_ids: [userId],
+          }),
+        }
+      );
 
       if (!response.ok) throw new Error("Failed to create conversation");
 

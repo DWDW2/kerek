@@ -4,45 +4,82 @@ import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { SendHorizontal, Users } from "lucide-react";
+import { SendHorizontal, Users, Loader2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useWebSocket } from "@/hooks/use-websocket";
+import { useMessages } from "@/hooks/use-messages";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 interface ChatProps {
-  roomId: string;
+  conversationId: string;
   username: string;
+  initialLimit?: number;
 }
 
-export function Chat({ roomId, username }: ChatProps) {
+export function Chat({
+  conversationId,
+  username,
+  initialLimit = 50,
+}: ChatProps) {
   const [newMessage, setNewMessage] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { isConnected, sendMessage, joinRoom, leaveRoom, messages, error } =
-    useWebSocket({
-      url: "ws://localhost:8080/ws",
-      onConnect: () => {
-        joinRoom(roomId);
-      },
-      onDisconnect: () => {
-        leaveRoom(roomId);
-      },
-    });
+
+  // Fetch initial messages
+  const {
+    messages: initialMessages,
+    isLoading,
+    error: fetchError,
+  } = useMessages({
+    conversationId,
+    limit: initialLimit,
+  });
+
+  // WebSocket connection for real-time messages
+  const {
+    isConnected,
+    sendMessage,
+    joinRoom,
+    leaveRoom,
+    messages: wsMessages,
+    error: wsError,
+  } = useWebSocket({
+    url: "ws://localhost:8080/ws",
+    onConnect: () => {
+      joinRoom(conversationId);
+    },
+    onDisconnect: () => {
+      leaveRoom(conversationId);
+    },
+  });
+
+  // Combine initial messages with WebSocket messages
+  const allMessages = [...initialMessages, ...wsMessages];
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+  }, [allMessages]);
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !isConnected) return;
 
-    sendMessage(newMessage.trim(), roomId);
+    sendMessage(newMessage.trim(), conversationId);
     setNewMessage("");
   };
+
+  if (isLoading) {
+    return (
+      <Card className="w-full max-w-2xl">
+        <CardContent className="flex items-center justify-center h-[500px]">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="w-full max-w-2xl">
@@ -50,7 +87,7 @@ export function Chat({ roomId, username }: ChatProps) {
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
-            Room: {roomId}
+            Conversation: {conversationId}
           </CardTitle>
           <Badge
             variant={isConnected ? "default" : "destructive"}
@@ -66,12 +103,12 @@ export function Chat({ roomId, username }: ChatProps) {
       <CardContent>
         <ScrollArea ref={scrollRef} className="h-[500px] pr-4 mb-4">
           <div className="space-y-4">
-            {messages.map((message, index) => (
+            {allMessages.map((message, index) => (
               <div
-                key={index}
+                key={message.id || index}
                 className={cn(
                   "flex",
-                  message.senderId === username
+                  message.sender_id === username
                     ? "justify-end"
                     : "justify-start"
                 )}
@@ -81,19 +118,23 @@ export function Chat({ roomId, username }: ChatProps) {
                     "max-w-[70%] rounded-lg p-3",
                     message.type === "system"
                       ? "bg-muted/50 text-muted-foreground mx-auto"
-                      : message.senderId === username
+                      : message.sender_id === username
                       ? "bg-primary text-primary-foreground"
                       : "bg-muted"
                   )}
                 >
                   {message.type !== "system" && (
                     <p className="text-xs font-medium mb-1">
-                      {message.senderId === username ? "You" : message.senderId}
+                      {message.sender_id === username
+                        ? "You"
+                        : message.sender_id}
                     </p>
                   )}
                   <p className="text-sm">{message.content}</p>
                   <p className="text-xs mt-1 opacity-70">
-                    {new Date(message.timestamp).toLocaleTimeString()}
+                    {new Date(
+                      message.created_at || message.timestamp
+                    ).toLocaleTimeString()}
                   </p>
                 </div>
               </div>
@@ -107,7 +148,7 @@ export function Chat({ roomId, username }: ChatProps) {
             placeholder={
               isConnected
                 ? "Type a message..."
-                : error
+                : wsError || fetchError
                 ? "Connection error. Please try again."
                 : "Connecting..."
             }

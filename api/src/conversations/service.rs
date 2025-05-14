@@ -159,22 +159,35 @@ impl ConversationService {
         user_id: &str,
     ) -> Result<Vec<Conversation>, AppError> {
         let user_uuid = Uuid::parse_str(user_id)
-            .map_err(|e| AppError(format!("Invalid user ID: {}", e), StatusCode::BAD_REQUEST))?;
+            .map_err(|e| {
+                eprintln!("Error parsing user ID: {}", e);
+                AppError(format!("Invalid user ID: {}", e), StatusCode::BAD_REQUEST)
+            })?;
     
         let stmt = Statement::new(
             "SELECT conversation_id FROM user_conversations WHERE user_id = ?"
         );
+        
         let mut iter = self
             .session
             .query_iter(stmt, (user_uuid,))
             .await
-            .map_err(|e| AppError(format!("Failed to list conversations: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?
+            .map_err(|e| {
+                eprintln!("Error querying user conversations: {}", e);
+                AppError(format!("Failed to list conversations: {}", e), StatusCode::INTERNAL_SERVER_ERROR)
+            })?
             .rows_stream::<(Uuid,)>()
-            .map_err(|e| AppError(format!("Failed to stream conversation ids: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?;
+            .map_err(|e| {
+                eprintln!("Error streaming conversation IDs: {}", e);
+                AppError(format!("Failed to stream conversation ids: {}", e), StatusCode::INTERNAL_SERVER_ERROR)
+            })?;
     
         let mut conversation_ids = Vec::new();
         while let Some((conversation_id,)) = iter.try_next().await
-            .map_err(|e| AppError(format!("Failed to process conversation id: {}", e), StatusCode::INTERNAL_SERVER_ERROR))? {
+            .map_err(|e| {
+                eprintln!("Error processing conversation ID: {}", e);
+                AppError(format!("Failed to process conversation id: {}", e), StatusCode::INTERNAL_SERVER_ERROR)
+            })? {
             conversation_ids.push(conversation_id);
         }
     
@@ -187,12 +200,21 @@ impl ConversationService {
                 .session
                 .query_iter(stmt, (id,))
                 .await
-                .map_err(|e| AppError(format!("Failed to fetch conversation: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?
+                .map_err(|e| {
+                    eprintln!("Error fetching conversation details: {}", e);
+                    AppError(format!("Failed to fetch conversation: {}", e), StatusCode::INTERNAL_SERVER_ERROR)
+                })?
                 .rows_stream::<(Option<String>, CqlTimestamp, CqlTimestamp)>()
-                .map_err(|e| AppError(format!("Failed to stream conversation: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?;
+                .map_err(|e| {
+                    eprintln!("Error streaming conversation details: {}", e);
+                    AppError(format!("Failed to stream conversation: {}", e), StatusCode::INTERNAL_SERVER_ERROR)
+                })?;
     
             if let Some((title, created_at, updated_at)) = rows.try_next().await
-                .map_err(|e| AppError(format!("Failed to process conversation: {}", e), StatusCode::INTERNAL_SERVER_ERROR))? {
+                .map_err(|e| {
+                    eprintln!("Error processing conversation details: {}", e);
+                    AppError(format!("Failed to process conversation: {}", e), StatusCode::INTERNAL_SERVER_ERROR)
+                })? {
                 let participants = self.get_conversation_participants(&id.to_string()).await?;
                 conversations.push(Conversation {
                     id: id.to_string(),
@@ -298,7 +320,7 @@ impl ConversationService {
             (conversation_uuid, limit)
         ).await
         .map_err(|e| AppError(format!("Failed to list messages: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?
-        .rows_stream::<(Uuid, Uuid, Uuid, String, CqlTimestamp, CqlTimestamp)>()
+        .rows_stream::<(Uuid, CqlTimeuuid, Uuid, String, CqlTimestamp, CqlTimestamp)>()
         .map_err(|e| AppError(format!("Failed to stream messages: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?;
 
         let mut messages = Vec::new();

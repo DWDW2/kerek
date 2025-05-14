@@ -252,6 +252,7 @@ impl ConversationService {
             "INSERT INTO messages (conversation_id, message_id, sender_id, content, sent_at, edited_at) 
              VALUES (?, ?, ?, ?, ?, ?)"
         );
+        
         self.session.query_unpaged(
             stmt,
             (

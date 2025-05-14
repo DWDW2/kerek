@@ -1,5 +1,6 @@
 import React from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
+import { ProtectedRoute } from "@/components/auth/protected-route";
 type Props = {
   children: React.ReactNode;
 };
@@ -7,7 +8,9 @@ type Props = {
 export default function layout({ children }: Props) {
   return (
     <>
-      <SidebarProvider>{children}</SidebarProvider>
+      <ProtectedRoute>
+        <SidebarProvider>{children}</SidebarProvider>
+      </ProtectedRoute>
     </>
   );
 }

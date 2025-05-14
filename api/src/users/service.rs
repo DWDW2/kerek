@@ -129,27 +129,52 @@ pub async fn delete_user(session: &web::Data<Session>, id: &str) -> Result<(), A
     Ok(())
 }
 
-pub async fn search_users(session: &web::Data<Session>, query: &str) -> Result<Vec<UserProfile>, AppError> {
-    let search_pattern = format!("%{}%", query);
-    
-    let mut iter = session.query_iter(
-        "SELECT id, username, email, created_at, last_seen_at, is_online FROM users WHERE username LIKE ? OR email LIKE ? LIMIT 20",
-        (&search_pattern, &search_pattern),
-    ).await.map_err(|e| AppError(format!("Failed to prepare search query: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?
+pub async fn search_users(
+    session: &web::Data<Session>,
+    query: &str,
+) -> Result<Vec<UserProfile>, AppError> {
+    let mut iter = session
+        .query_iter(
+            "SELECT id, username, email, created_at, last_seen_at, is_online FROM users",
+            (),
+        )
+        .await
+        .map_err(|e| {
+            AppError(
+                format!("Failed to prepare search query: {}", e),
+                StatusCode::INTERNAL_SERVER_ERROR,
+            )
+        })?
         .rows_stream::<(Uuid, String, String, CqlTimestamp, Option<CqlTimestamp>, bool)>()
-        .map_err(|e| AppError(format!("Failed to get rows stream: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?;
+        .map_err(|e| {
+            AppError(
+                format!("Failed to get rows stream: {}", e),
+                StatusCode::INTERNAL_SERVER_ERROR,
+            )
+        })?;
 
     let mut users = Vec::new();
-    while let Some(row) = iter.try_next().await.map_err(|e| AppError(format!("Failed to process search results: {}", e), StatusCode::INTERNAL_SERVER_ERROR))? {
+    while let Some(row) = iter
+        .try_next()
+        .await
+        .map_err(|e| {
+            AppError(
+                format!("Failed to process search results: {}", e),
+                StatusCode::INTERNAL_SERVER_ERROR,
+            )
+        })?
+    {
         let (id, username, email, created_at, last_seen_at, is_online) = row;
-        users.push(UserProfile {
-            id: id.to_string(),
-            username,
-            email,
-            created_at: created_at.0,
-            last_seen_at: last_seen_at.map(|ts| ts.0),
-            is_online,
-        });
+        if username.contains(query) || email.contains(query) {
+            users.push(UserProfile {
+                id: id.to_string(),
+                username,
+                email,
+                created_at: created_at.0,
+                last_seen_at: last_seen_at.map(|ts| ts.0),
+                is_online,
+            });
+        }
     }
 
     Ok(users)

@@ -39,7 +39,7 @@ export function LoginForm() {
   };
 
   return (
-    <Card className="w-full max-w-md mx-auto">
+    <Card className="">
       <CardHeader>
         <CardTitle>Login</CardTitle>
         <CardDescription>

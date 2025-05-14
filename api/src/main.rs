@@ -4,6 +4,7 @@ mod error;
 mod middleware;
 mod users;
 mod conversations;
+mod websocket;
 mod utils;
 use actix_cors::Cors;
 use actix_web::{web, App, HttpServer};
@@ -15,10 +16,13 @@ use actix_web::middleware::Logger;
 use crate::users::handler as user_handler;
 use crate::conversations::handler as conversation_handler;
 
+
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
     env_logger::init_from_env(Env::default().default_filter_or("info"));
+
 
     let session = db::connect().await.unwrap();
     let session_data = web::Data::new(session);
@@ -35,9 +39,9 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         let cors = Cors::default()
-            .allow_any_origin()
-            .allow_any_method()
             .allow_any_header()
+            .allow_any_method()
+            .allow_any_origin()
             .max_age(3600);
 
         App::new()
@@ -59,7 +63,7 @@ async fn main() -> std::io::Result<()> {
                     .route("/me", web::get().to(user_handler::get_me))
                     .route("/profile", web::get().to(user_handler::get_profile))
                     .route("/profile/{id}", web::put().to(user_handler::update_profile))
-                    .route("/profile/{search}", web::get().to(user_handler::search_users))
+                    .route("/profile/search", web::get().to(user_handler::search_users))
                     .service(
                         web::scope("/conversations")
                             .route("", web::post().to(conversation_handler::create_conversation))

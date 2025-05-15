@@ -5,7 +5,7 @@ use serde::{Serialize, Deserialize};
 use std::env;
 use crate::error::AppError;
 use actix_web::http::StatusCode;
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Claims {
     pub exp: usize, 
     pub sub: String,

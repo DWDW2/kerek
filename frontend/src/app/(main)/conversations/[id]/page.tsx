@@ -12,7 +12,7 @@ export default async function ConversationPage({
   params,
 }: ConversationPageProps) {
   return (
-    <div className="container py-6">
+    <div className="container py-6 mx-auto">
       <div className="h-[calc(100vh-8rem)]">
         <ConversationDetail />
       </div>

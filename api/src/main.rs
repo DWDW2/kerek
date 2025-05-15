@@ -15,8 +15,7 @@ use std::env;
 use actix_web::middleware::Logger;
 use crate::users::handler as user_handler;
 use crate::conversations::handler as conversation_handler;
-
-
+use crate::websocket::handler as websocket_handler;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -50,22 +49,23 @@ async fn main() -> std::io::Result<()> {
             .wrap(cors)
             .app_data(session_data.clone())
             .app_data(web::Data::new(jwt_secret.clone()))
+            .route("/ws/{id}", web::get().to(websocket_handler::echo))
             .service(
                 web::scope("/api/users")
-                    .route("/register", web::post().to(user_handler::register))
-                    .route("/login", web::post().to(user_handler::login)),
+                .route("/register", web::post().to(user_handler::register))
+                .route("/login", web::post().to(user_handler::login))
             )
             .service(
                 web::scope("/api")
-                    .wrap(Auth {
-                        secret: jwt_secret.clone(),
-                    })
-                    .route("/me", web::get().to(user_handler::get_me))
-                    .route("/profile", web::get().to(user_handler::get_profile))
-                    .route("/profile/{id}", web::put().to(user_handler::update_profile))
-                    .route("/profile/search", web::get().to(user_handler::search_users))
-                    .service(
-                        web::scope("/conversations")
+                .wrap(Auth {
+                    secret: jwt_secret.clone(),
+                })
+                .route("/me", web::get().to(user_handler::get_me))
+                .route("/profile", web::get().to(user_handler::get_profile))
+                .route("/profile/{id}", web::put().to(user_handler::update_profile))
+                .route("/profile/search", web::get().to(user_handler::search_users))
+                .service(
+                    web::scope("/conversations")
                             .route("", web::post().to(conversation_handler::create_conversation))
                             .route("", web::get().to(conversation_handler::list_conversations))
                             .route("/{id}", web::get().to(conversation_handler::get_conversation))

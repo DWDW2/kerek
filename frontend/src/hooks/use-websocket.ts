@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 
 interface WebSocketMessage {
-  type: "message" | "system";
+  type: "message" | "system" | "command";
   content: string;
   room?: string;
-  senderId?: string;
+  sender?: string;
   timestamp: string;
 }
 
 interface UseWebSocketProps {
-  url: string;
+  room: string;
+  username?: string;
   onConnect?: () => void;
   onDisconnect?: () => void;
   onError?: (error: Event) => void;
@@ -17,16 +18,17 @@ interface UseWebSocketProps {
 
 interface UseWebSocketReturn {
   isConnected: boolean;
-  sendMessage: (content: string, room: string) => void;
+  sendMessage: (content: string) => void;
   joinRoom: (room: string) => void;
-  leaveRoom: (room: string) => void;
+  setUsername: (name: string) => void;
   messages: WebSocketMessage[];
   lastMessage: WebSocketMessage | null;
   error: Event | null;
 }
 
 export function useWebSocket({
-  url,
+  room,
+  username,
   onConnect,
   onDisconnect,
   onError,
@@ -35,41 +37,45 @@ export function useWebSocket({
   const [messages, setMessages] = useState<WebSocketMessage[]>([]);
   const [error, setError] = useState<Event | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
-  const clientIdRef = useRef<number | null>(null);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout>(null);
 
   const connect = useCallback(() => {
-    const ws = new WebSocket(url);
+    if (wsRef.current) {
+      wsRef.current.close();
+    }
+
+    const ws = new WebSocket(
+      `ws://localhost:8080/api/conversations/ws/${room}`
+    );
 
     ws.onopen = () => {
       console.log("WebSocket connected");
       setIsConnected(true);
+      setError(null);
       onConnect?.();
-
-      // Send connect message to get client ID
-      ws.send(JSON.stringify({ type: "connect" }));
+      if (username) {
+        ws.send(`/name ${username}`);
+      }
     };
 
     ws.onclose = () => {
       console.log("WebSocket disconnected");
       setIsConnected(false);
       onDisconnect?.();
+
+      reconnectTimeoutRef.current = setTimeout(() => {
+        connect();
+      }, 3000);
     };
 
     ws.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data);
-
-        // Handle initial connection response with client ID
-        if (data.type === "connect" && data.id) {
-          clientIdRef.current = data.id;
-          return;
-        }
-
+        const content = event.data;
         const message: WebSocketMessage = {
-          type: data.type || "message",
-          content: data.content || data.msg,
-          room: data.room,
-          senderId: data.senderId,
+          type: content.startsWith("/") ? "command" : "message",
+          content,
+          room,
+          sender: username,
           timestamp: new Date().toISOString(),
         };
 
@@ -89,8 +95,11 @@ export function useWebSocket({
 
     return () => {
       ws.close();
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
     };
-  }, [url, onConnect, onDisconnect, onError]);
+  }, [room, username, onConnect, onDisconnect, onError]);
 
   useEffect(() => {
     const cleanup = connect();
@@ -100,47 +109,25 @@ export function useWebSocket({
   }, [connect]);
 
   const sendMessage = useCallback(
-    (content: string, room: string) => {
-      if (!wsRef.current || !isConnected || !clientIdRef.current) return;
-
-      const message = {
-        type: "message",
-        id: clientIdRef.current,
-        msg: content,
-        room,
-      };
-
-      wsRef.current.send(JSON.stringify(message));
+    (content: string) => {
+      if (!wsRef.current || !isConnected) return;
+      wsRef.current.send(content);
     },
     [isConnected]
   );
 
   const joinRoom = useCallback(
-    (room: string) => {
-      if (!wsRef.current || !isConnected || !clientIdRef.current) return;
-
-      const message = {
-        type: "join",
-        id: clientIdRef.current,
-        name: room,
-      };
-
-      wsRef.current.send(JSON.stringify(message));
+    (newRoom: string) => {
+      if (!wsRef.current || !isConnected) return;
+      wsRef.current.send(`/join ${newRoom}`);
     },
     [isConnected]
   );
 
-  const leaveRoom = useCallback(
-    (room: string) => {
-      if (!wsRef.current || !isConnected || !clientIdRef.current) return;
-
-      const message = {
-        type: "leave",
-        id: clientIdRef.current,
-        room,
-      };
-
-      wsRef.current.send(JSON.stringify(message));
+  const setUsername = useCallback(
+    (name: string) => {
+      if (!wsRef.current || !isConnected) return;
+      wsRef.current.send(`/name ${name}`);
     },
     [isConnected]
   );
@@ -149,7 +136,7 @@ export function useWebSocket({
     isConnected,
     sendMessage,
     joinRoom,
-    leaveRoom,
+    setUsername,
     messages,
     lastMessage: messages[messages.length - 1] || null,
     error,

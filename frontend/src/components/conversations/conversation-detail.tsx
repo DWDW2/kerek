@@ -9,7 +9,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/lib/auth-context";
-import { useConversationWebSocket } from "@/hooks/use-conversation-websocket";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -32,21 +31,54 @@ export function ConversationDetail() {
   const [isSending, setIsSending] = useState(false);
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [initialMessages, setInitialMessages] = useState<Message[]>([]);
+  const [wsMessages, setWsMessages] = useState<Message[]>([]);
+  const [isConnected, setIsConnected] = useState(false);
+  const [wsError, setWsError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const wsRef = useRef<WebSocket | null>(null);
   const { user } = useAuth();
 
-  const {
-    isConnected,
-    sendMessage,
-    messages: wsMessages,
-    error: wsError,
-  } = useConversationWebSocket({
-    conversationId: id as string,
-    userId: user?.id || "",
-    onError: (error) => {
+  useEffect(() => {
+    if (!user?.id || !id) return;
+
+    const token = localStorage.getItem("auth_token");
+    if (!token) return;
+
+    const ws = new WebSocket(`ws://localhost:8080/ws/${id}`);
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      setIsConnected(true);
+      setWsError(null);
+      console.log("WebSocket connected");
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data) as Message;
+        setWsMessages((prev) => [...prev, message]);
+      } catch (error) {
+        console.error("Failed to parse WebSocket message:", error);
+      }
+    };
+
+    ws.onclose = () => {
+      setIsConnected(false);
+      setWsError("Connection closed");
+      console.log("WebSocket disconnected");
+    };
+
+    ws.onerror = (error) => {
+      setWsError("Connection error");
       console.error("WebSocket error:", error);
-    },
-  });
+    };
+
+    return () => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.close();
+      }
+    };
+  }, [id, user?.id]);
 
   useEffect(() => {
     const loadConversation = async () => {
@@ -100,16 +132,31 @@ export function ConversationDetail() {
     }
   }, [wsMessages, initialMessages]);
 
+  const sendMessage = async (content: string) => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      throw new Error("WebSocket is not connected");
+    }
+
+    const message = {
+      content,
+      conversationId: id,
+      senderId: user?.id,
+    };
+
+    wsRef.current.send(JSON.stringify(message));
+  };
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !isConnected) return;
 
     setIsSending(true);
     try {
-      sendMessage(newMessage.trim());
+      await sendMessage(newMessage.trim());
       setNewMessage("");
     } catch (error) {
       console.error("Failed to send message:", error);
+      setWsError("Failed to send message");
     } finally {
       setIsSending(false);
     }

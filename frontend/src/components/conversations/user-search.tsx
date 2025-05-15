@@ -43,7 +43,7 @@ export function UserSearch() {
       const response = await fetch(
         `${
           process.env.NEXT_PUBLIC_API_URL
-        }/profile/search?q=${encodeURIComponent(query)}`,
+        }/users/profile/search?q=${encodeURIComponent(query)}`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("auth_token")}`,

@@ -16,10 +16,10 @@ use actix_web::middleware::Logger;
 use crate::users::handler as user_handler;
 use crate::conversations::handler as conversation_handler;
 use crate::utils::websocket as websocket_handler;
-use crate::utils::websocket::ConversationStore;
+use crate::utils::websocket::RoomStore;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use std::collections::HashSet;
+use std::collections::HashMap;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -39,9 +39,9 @@ async fn main() -> std::io::Result<()> {
         .expect("PORT must be a number");
 
     let jwt_secret = env::var("JWT_SECRET").expect("JWT_SECRET must be set");
-    let conversation_store: ConversationStore = Arc::new(RwLock::new(HashSet::new()));
+    let room_store: RoomStore = Arc::new(RwLock::new(HashMap::new()));
     HttpServer::new(move || {   
-        let cors = Cors::default()
+        let cors = Cors::default()  
             .allow_any_header()
             .allow_any_method()
             .allow_any_origin()
@@ -51,7 +51,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(Logger::new("%a %t '%r' %s %b '%{Referer}i' '%{User-Agent}i' %D"))
             .wrap(cors)
             .app_data(session_data.clone())
-            .app_data(web::Data::new(conversation_store.clone()))
+            .app_data(web::Data::new(room_store.clone()))
             .app_data(web::Data::new(jwt_secret.clone()))
             .route("/ws/{id}", web::get().to(websocket_handler::echo))
             .service(

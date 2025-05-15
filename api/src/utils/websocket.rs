@@ -10,6 +10,7 @@ use std::env;
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use tokio::sync::{RwLock, mpsc};
+use crate::models::message::NewMessage;
 use crate::utils::jwt::Claims;
 use crate::error::AppError;
 use crate::conversations::service as conversation_service;
@@ -57,67 +58,87 @@ pub async fn echo(
     info!("Starting WS connection for conversation_id: {}", conversation_id);
     let (tx, mut rx) = mpsc::unbounded_channel::<String>();
 
-    // Store sender and get pending messages (if any)
     let pending_messages = {
         let mut store = room_store.write().await;
         let room = store.entry(conversation_id.clone()).or_insert_with(|| RoomState {
             sender: None,
             pending_messages: VecDeque::new(),
         });
-
-        // If someone is already in the room, notify them
         if let Some(existing_tx) = &room.sender {
             let _ = existing_tx.send("Another user has joined your room!".to_string());
         }
 
-        // Take pending messages to send to this user
         let mut pending = VecDeque::new();
         std::mem::swap(&mut pending, &mut room.pending_messages);
 
-        // Set this user's sender
         room.sender = Some(tx);
 
         pending
     };
 
-    // Send any pending messages to the new user
     for msg in pending_messages {
         if let Err(e) = session.text(msg).await {
             error!("Failed to send pending message: {}", e);
         }
     }
 
-    let conversation = conversation_service::ConversationService::new(dbsession).await?;
 
     let room_store = room_store.clone();
     rt::spawn(async move {
         loop {
             tokio::select! {
-                // Messages from the client
                 Some(msg) = stream.next() => {
                     match msg {
                         Ok(AggregatedMessage::Text(text)) => {
                             info!("Received text message: {}", text);
-
-                            // Store or forward the message
-                            let mut store = room_store.write().await;
-                            let room = store.entry(conversation_id.clone()).or_insert_with(|| RoomState {
-                                sender: None,
-                                pending_messages: VecDeque::new(),
-                            });
-
-                            // If another user is connected, send to them
-                            if let Some(other_tx) = &room.sender {
-                                if let Err(e) = other_tx.send(text.to_string()) {
-                                    error!("Failed to send message to other user: {}", e);
-                                    // If send fails, store the message
-                                    room.pending_messages.push_back(text.to_string());
-                                }
-                            } else {
-                                // No one else is connected, store the message
-                                room.pending_messages.push_back(text.to_string());
+                    
+                            #[derive(Deserialize)]
+                            struct IncomingMessage {
+                                content: String,
+                                conversationId: String,
+                                senderId: String,
                             }
-                        }
+                            let conversation = conversation_service::ConversationService::new(dbsession.clone()).await.unwrap();
+                        
+                            let incoming: Result<IncomingMessage, _> = serde_json::from_str(&text);
+                            match incoming {
+                                Ok(msg) => {
+                                    match conversation.send_message(
+                                        &msg.conversationId,
+                                        &msg.senderId,
+                                        NewMessage {
+                                            content: msg.content,
+                                        },
+                                    ).await {
+                                        Ok(saved_msg) => {
+                                            let response = serde_json::to_string(&saved_msg).unwrap();
+                        
+                                            let mut store = room_store.write().await;
+                                            let room = store.entry(conversation_id.clone()).or_insert_with(|| RoomState {
+                                                sender: None,
+                                                pending_messages: VecDeque::new(),
+                                            });
+                        
+                                            if let Some(other_tx) = &room.sender {
+                                                if let Err(e) = other_tx.send(response.clone()) {
+                                                    error!("Failed to send message to other user: {}", e);
+                                                    room.pending_messages.push_back(response);
+                                                }
+                                            } else {
+                                                room.pending_messages.push_back(response);
+                                            }
+                                        }
+                                        Err(e) => {
+                                            error!("Failed to save message: {}", e);
+                                        }
+                                    }
+                                }
+                                Err(e) => {
+                                    error!("Failed to parse incoming message: {}", e);
+
+                                }
+                            }
+                        }                                          
                         Ok(AggregatedMessage::Close(_)) => break,
                         Err(e) => {
                             error!("WebSocket error: {}", e);
@@ -126,7 +147,6 @@ pub async fn echo(
                         _ => {}
                     }
                 }
-                // Messages from the server (other users)
                 Some(server_msg) = rx.recv() => {
                     if let Err(e) = session.text(server_msg).await {
                         error!("Failed to send server message: {}", e);
@@ -139,9 +159,7 @@ pub async fn echo(
         info!("WebSocket connection closed for conversation_id: {}", conversation_id);
         let mut store = room_store.write().await;
         if let Some(room) = store.get_mut(&conversation_id) {
-            // Remove this sender
             room.sender = None;
-            // Optionally: remove the room if no pending messages and no sender
             if room.pending_messages.is_empty() {
                 store.remove(&conversation_id);
             }

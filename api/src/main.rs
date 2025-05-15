@@ -10,7 +10,6 @@ use actix_web::{web, App, HttpServer};
 use dotenv::dotenv;
 use env_logger::Env;
 use middleware::auth::Auth;
-use models::conversation::Conversation;
 use std::env;
 use actix_web::middleware::Logger;
 use crate::users::handler as user_handler;

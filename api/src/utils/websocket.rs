@@ -11,6 +11,13 @@ use serde::{Deserialize, Serialize};
 use std::env;
 use crate::utils::jwt::Claims;
 
+use std::collections::HashSet;
+use std::sync::Arc;
+use tokio::sync::RwLock;
+
+pub type ConversationStore = Arc<RwLock<HashSet<String>>>;
+
+
 #[derive(Deserialize, Debug)]
 pub struct ConversationQuery {
     token: String,
@@ -22,6 +29,7 @@ pub async fn echo(
     path: web::Path<String>,
     query: web::Query<ConversationQuery>,
     dbsession: web::Data<Session>,
+    conversation_store: web::Data<ConversationStore>,
 ) -> Result<HttpResponse, Error> {
     let (res, mut session, stream) = actix_ws::handle(&req, stream)?;
     let token = query.token.clone();
@@ -44,7 +52,10 @@ pub async fn echo(
 
     let conversation_id = path.into_inner();
     info!("Starting WS connection for conversation_id: {}", conversation_id);
-
+    {
+        let mut store = conversation_store.write().await;
+        store.insert(conversation_id.clone());
+    }
     let conversation = conversation_service::ConversationService::new(dbsession).await?;
 
     rt::spawn(async move {

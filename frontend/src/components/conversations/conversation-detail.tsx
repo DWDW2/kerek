@@ -44,7 +44,7 @@ export function ConversationDetail() {
     const token = localStorage.getItem("auth_token");
     if (!token) return;
 
-    const ws = new WebSocket(`ws://localhost:8080/ws/${id}`);
+    const ws = new WebSocket(`ws://localhost:8080/ws/${id}?token=${token}`);
     wsRef.current = ws;
 
     ws.onopen = () => {

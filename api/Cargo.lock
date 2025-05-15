@@ -429,6 +429,7 @@ dependencies = [
  "futures",
  "futures-util",
  "jsonwebtoken",
+ "lazy_static",
  "log",
  "rand",
  "scylla",

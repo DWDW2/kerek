@@ -7,7 +7,7 @@ export default function HeroSection() {
   const router = useRouter();
   return (
     <div
-      className="min-h-[80vh] md:min-h-screen animate-section  rounded-lg md:rounded-3xl mb-4 mt-10 md:mb-10 md:mt-16 flex flex-col items-center p-6 md:p-14 md:pt-32 pt-28 gap-3 md:gap-4 bg-cover bg-center w-[88vw] mx-auto"
+      className="min-h-[80vh] md:min-h-screen animate-section  rounded-lg md:rounded-3xl mb-4 mt-20 md:mb-10 flex flex-col items-center p-6 md:p-14 md:pt-32 pt-28 gap-3 md:gap-4 bg-cover bg-center w-[88vw] mx-auto"
       style={{
         backgroundImage: "url(/hero-section.png)",
       }}
@@ -21,7 +21,7 @@ export default function HeroSection() {
       </section>
       <section className="flex flex-col md:flex-row gap-3 md:gap-4 w-full max-w-[90vw] md:w-fit">
         <AnimatedButton
-          onClick={() => router.push("/chat")}
+          onClick={() => router.push("/dashboard")}
           className="text-neutral-100 font-bold font-mono"
         >
           Get Started

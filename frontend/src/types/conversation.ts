@@ -18,6 +18,7 @@ export interface Conversation {
 
 export interface NewMessage {
   content: string;
+  sender_id: string;
 }
 
 export interface NewConversation {

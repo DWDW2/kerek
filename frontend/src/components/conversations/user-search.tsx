@@ -84,7 +84,7 @@ export function UserSearch() {
       if (!response.ok) throw new Error("Failed to create conversation");
 
       const conversation = await response.json();
-      router.push(`/conversations/${conversation.id}`);
+      router.push(`/dashboard/conversations/${conversation.id}`);
     } catch (error) {
       console.error("Failed to start conversation. Please try again.");
     }

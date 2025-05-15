@@ -2,37 +2,54 @@ import React from "react";
 
 const features = [
   {
-    title: "Finding content that you actually need",
+    title: "Real-time Collaboration",
     description:
-      "We provide a platform for you to find content that you actually need.",
-    icon: "🚀",
+      "Experience seamless, simultaneous editing with your team. See changes as they happen, making collaboration faster and more efficient.",
+    icon: "⚡",
   },
   {
-    title: "Managing your own content",
-    description: "We provide a platform for you to manage your own content.",
-    icon: "📝",
+    title: "AI-Powered Summarization",
+    description:
+      "Instantly distill lengthy conversations into concise summaries.  Quickly catch up on key points and decisions without reading every message.",
+    icon: "🤖",
   },
   {
-    title: "Collaborating with your friends",
+    title: "Contextual Threading",
     description:
-      "You can create space where you and your friends can collaborate on content creation.",
-    icon: "👯",
+      "Maintain clear and organized conversations with advanced threading. Keep discussions focused and easily track multiple topics within a channel.",
+    icon: "🧵",
   },
   {
-    title: "Smart Suggestions",
+    title: "Integrated Task Management",
     description:
-      "We provide a system that can help you to write with deep understanding of other people's content.",
-    icon: "💡",
+      "Create, assign, and track tasks directly within your chats.  Streamline your workflow and ensure accountability without switching apps.",
+    icon: "✅",
+  },
+  {
+    title: "End-to-End Encryption",
+    description:
+      "Communicate with confidence knowing your messages are secured with state-of-the-art end-to-end encryption, ensuring complete privacy.",
+    icon: "🔒",
+  },
+  {
+    title: "Customizable Reactions",
+    description:
+      "Express yourself beyond simple emojis. Create and use custom reactions to add personality and nuance to your communications.",
+    icon: "🎨",
   },
 ];
 
 const Features = () => {
   return (
-    <section className="py-16">
+    <section className="py-16 px-3">
       <div className="container mx-auto text-center">
-        <h2 className="text-3xl md:text-6xl font-semibold font-mono mb-8 text-gray-800">
-          Key Features
+        <h2 className="text-3xl md:text-5xl font-semibold font-mono mb-8 text-gray-800">
+          Next-Gen Messaging Features
         </h2>
+        <p className="text-lg text-gray-600 mb-12">
+          Empowering seamless communication and collaboration with advanced
+          features.
+        </p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {features.map((feature, index) => (
             <div

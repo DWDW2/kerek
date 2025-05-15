@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Conversation } from "@/types/conversation";
-import { listConversations } from "@/lib/api/conversations";
+import { listConversations } from "@/server/conversations";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useRouter } from "next/navigation";
@@ -67,7 +67,9 @@ export function ConversationList() {
             {conversations.map((conversation) => (
               <button
                 key={conversation.id}
-                onClick={() => router.push(`/conversations/${conversation.id}`)}
+                onClick={() =>
+                  router.push(`/dashboard/conversations/${conversation.id}`)
+                }
                 className="w-full text-left p-4 rounded-lg hover:bg-accent transition-colors"
               >
                 <div className="flex items-center space-x-4">

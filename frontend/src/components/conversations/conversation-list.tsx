@@ -57,42 +57,40 @@ export function ConversationList() {
   }
 
   return (
-    <Card className="w-full max-w-md">
-      <CardHeader>
-        <CardTitle>Conversations</CardTitle>
+    <Card className="h-full flex flex-col border-r rounded-none shadow-none">
+      <CardHeader className="border-b px-6 py-4">
+        <CardTitle className="text-lg font-semibold">Conversations</CardTitle>
       </CardHeader>
-      <CardContent>
-        <ScrollArea className="h-[600px] pr-4">
-          <div className="space-y-4">
+      <CardContent className="flex-1 p-0">
+        <ScrollArea className="h-full">
+          <div className="flex flex-col divide-y">
             {conversations.map((conversation) => (
               <button
                 key={conversation.id}
                 onClick={() =>
                   router.push(`/dashboard/conversations/${conversation.id}`)
                 }
-                className="w-full text-left p-4 rounded-lg hover:bg-accent transition-colors"
+                className="w-full text-left px-6 py-4 hover:bg-accent/50 transition-colors focus:outline-none focus:bg-accent/50"
               >
-                <div className="flex items-center space-x-4">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">
-                      {conversation.name || "Unnamed Conversation"}
-                    </p>
-                    {conversation.last_message && (
-                      <>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {conversation.last_message.content}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {formatDistanceToNow(
-                            new Date(conversation.last_message.created_at),
-                            {
-                              addSuffix: true,
-                            }
-                          )}
-                        </p>
-                      </>
-                    )}
-                  </div>
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium truncate">
+                    {conversation.name || "Unnamed Conversation"}
+                  </p>
+                  {conversation.last_message && (
+                    <>
+                      <p className="text-sm text-muted-foreground truncate">
+                        {conversation.last_message.content}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatDistanceToNow(
+                          new Date(conversation.last_message.created_at),
+                          {
+                            addSuffix: true,
+                          }
+                        )}
+                      </p>
+                    </>
+                  )}
                 </div>
               </button>
             ))}

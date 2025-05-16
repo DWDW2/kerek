@@ -12,8 +12,8 @@ export default async function ConversationPage({
   params,
 }: ConversationPageProps) {
   return (
-    <div className="container py-6 mx-auto">
-      <div className="h-[calc(100vh-8rem)]">
+    <div className="flex h-[calc(100vh-4rem)] w-full">
+      <div className="flex-1 flex flex-col">
         <ConversationDetail />
       </div>
     </div>

@@ -44,7 +44,6 @@ export function ConversationDetail() {
       setMessages((prev) => {
         const map = new Map<string, Message>();
         [...newMsgs, ...prev].forEach((msg) => map.set(msg.id, msg));
-        // Sort by createdAt ascending
         return Array.from(map.values()).sort(
           (a, b) =>
             new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
@@ -54,7 +53,6 @@ export function ConversationDetail() {
     [setMessages]
   );
 
-  // WebSocket connection
   useEffect(() => {
     if (!user?.id || !id) return;
 
@@ -98,7 +96,6 @@ export function ConversationDetail() {
     };
   }, [id, user?.id, mergeMessages]);
 
-  // Load conversation details
   useEffect(() => {
     const loadConversation = async () => {
       try {
@@ -121,7 +118,6 @@ export function ConversationDetail() {
     loadConversation();
   }, [id]);
 
-  // Initial load of messages
   useEffect(() => {
     const loadMessages = async () => {
       setIsLoading(true);
@@ -148,14 +144,12 @@ export function ConversationDetail() {
     loadMessages();
   }, [id]);
 
-  // Scroll to bottom on new message
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages.length]);
 
-  // Load older messages
   const loadOlderMessages = async () => {
     if (isLoadingMore || !messages.length) return;
     setIsLoadingMore(true);
@@ -248,10 +242,12 @@ export function ConversationDetail() {
   );
 
   return (
-    <Card className="h-full flex flex-col">
-      <CardHeader>
+    <Card className="h-full flex flex-col border-none shadow-none rounded-none">
+      <CardHeader className="border-b px-6 py-4">
         <div className="flex items-center justify-between">
-          <CardTitle>Chat with {otherParticipant}</CardTitle>
+          <CardTitle className="text-lg font-semibold">
+            Chat with {otherParticipant}
+          </CardTitle>
           <Badge
             variant={isConnected ? "default" : "destructive"}
             className={cn(
@@ -263,9 +259,9 @@ export function ConversationDetail() {
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="flex-1 flex flex-col">
-        <ScrollArea ref={scrollRef} className="flex-1 pr-4 mb-4">
-          <div className="space-y-4">
+      <CardContent className="flex-1 flex flex-col p-0">
+        <ScrollArea ref={scrollRef} className="flex-1 px-6">
+          <div className="flex flex-col space-y-4 py-4">
             {hasMore && (
               <div className="flex justify-center">
                 <Button
@@ -273,6 +269,7 @@ export function ConversationDetail() {
                   variant="outline"
                   onClick={loadOlderMessages}
                   disabled={isLoadingMore}
+                  className="bg-background/50 backdrop-blur-sm"
                 >
                   {isLoadingMore ? "Loading..." : "Load older messages"}
                 </Button>
@@ -282,7 +279,7 @@ export function ConversationDetail() {
               <div
                 key={message.id}
                 className={cn(
-                  "flex",
+                  "flex w-full",
                   message.senderId === user?.id
                     ? "justify-end"
                     : "justify-start"
@@ -290,42 +287,49 @@ export function ConversationDetail() {
               >
                 <div
                   className={cn(
-                    "max-w-[70%] rounded-lg p-3",
+                    "max-w-[70%] rounded-2xl px-4 py-2.5",
                     message.senderId === user?.id
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted"
+                      ? "bg-primary text-primary-foreground rounded-tr-none"
+                      : "bg-muted rounded-tl-none"
                   )}
                 >
-                  <p className="text-sm">{message.content}</p>
-                  <p className="text-xs mt-1 opacity-70">
-                    {new Date(message.createdAt).toLocaleTimeString()}
+                  <p className="text-sm leading-relaxed">{message.content}</p>
+                  <p className="text-xs mt-1 opacity-70 text-right">
+                    {new Date(message.createdAt).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
                   </p>
                 </div>
               </div>
             ))}
           </div>
         </ScrollArea>
-        <form onSubmit={handleSendMessage} className="flex space-x-2">
-          <Input
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder={
-              isConnected
-                ? "Type a message..."
-                : wsError
-                ? "Connection error. Please try again."
-                : "Connecting..."
-            }
-            disabled={!isConnected || isSending}
-          />
-          <Button
-            type="submit"
-            size="icon"
-            disabled={!isConnected || isSending}
-          >
-            <SendHorizontal className="h-4 w-4" />
-          </Button>
-        </form>
+        <div className="border-t p-4">
+          <form onSubmit={handleSendMessage} className="flex space-x-2">
+            <Input
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder={
+                isConnected
+                  ? "Type a message..."
+                  : wsError
+                  ? "Connection error. Please try again."
+                  : "Connecting..."
+              }
+              disabled={!isConnected || isSending}
+              className="flex-1"
+            />
+            <Button
+              type="submit"
+              size="icon"
+              disabled={!isConnected || isSending}
+              className="shrink-0"
+            >
+              <SendHorizontal className="h-4 w-4" />
+            </Button>
+          </form>
+        </div>
       </CardContent>
     </Card>
   );

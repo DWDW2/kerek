@@ -1,8 +1,8 @@
 use actix_web::{rt, web, Error, HttpRequest, HttpResponse};
-use actix_ws::AggregatedMessage;
+use actix_ws::Message;
 use futures_util::StreamExt as _;
 use scylla::client::session::Session;
-use log::{info, error};
+use log::{info, error, warn, debug};
 use actix_web::http::StatusCode;
 use jsonwebtoken::{decode, DecodingKey, Validation};
 use serde::Deserialize;
@@ -16,8 +16,8 @@ use crate::error::AppError;
 use crate::conversations::service as conversation_service;
 
 pub struct RoomState {
-    pub sender: Option<mpsc::UnboundedSender<String>>,
-    pub pending_messages: VecDeque<String>,
+    pub senders: HashMap<String, mpsc::UnboundedSender<String>>, // user_id -> sender
+    pub pending_messages: HashMap<String, VecDeque<String>>,     // user_id -> pending
 }
 
 pub type RoomStore = Arc<RwLock<HashMap<String, RoomState>>>;
@@ -35,136 +35,219 @@ pub async fn echo(
     dbsession: web::Data<Session>,
     room_store: web::Data<RoomStore>,
 ) -> Result<HttpResponse, Error> {
-    let (res, mut session, stream) = actix_ws::handle(&req, stream)?;
-    let token = query.token.clone();
+    info!("WebSocket handshake initiated for path: {:?}", path);
 
-    let secret = env::var("JWT_SECRET").unwrap_or_else(|_| "your-secret-key".to_string());
-    let validation = Validation::default();
+    let (res, mut session, mut stream) = actix_ws::handle(&req, stream)?;
+    info!("WebSocket handshake successful.");
 
-    let claims = decode::<Claims>(
+    let token: String = query.token.clone();
+    debug!("Received token: {}", token);
+
+    let secret: String = env::var("JWT_SECRET").unwrap_or_else(|_| "your-secret-key".to_string());
+    let validation: Validation = Validation::default();
+
+    let claims = match decode::<Claims>(
         &token,
         &DecodingKey::from_secret(secret.as_bytes()),
         &validation,
-    )
-    .map_err(|e| AppError(format!("Invalid token: {}", e), StatusCode::UNAUTHORIZED))?
-    .claims;
-
-    info!("claims: {:?}", claims);
-    let mut stream = stream
-        .aggregate_continuations()
-        .max_continuation_size(2_usize.pow(20));
-
-    let conversation_id = path.into_inner();
-    info!("Starting WS connection for conversation_id: {}", conversation_id);
-    let (tx, mut rx) = mpsc::unbounded_channel::<String>();
-
-    let pending_messages = {
-        let mut store = room_store.write().await;
-        let room = store.entry(conversation_id.clone()).or_insert_with(|| RoomState {
-            sender: None,
-            pending_messages: VecDeque::new(),
-        });
-        if let Some(existing_tx) = &room.sender {
-            let _ = existing_tx.send("Another user has joined your room!".to_string());
+    ) {
+        Ok(data) => {
+            info!("JWT decoded successfully: {:?}", data.claims);
+            data.claims
         }
-
-        let mut pending = VecDeque::new();
-        std::mem::swap(&mut pending, &mut room.pending_messages);
-
-        room.sender = Some(tx);
-
-        pending
+        Err(e) => {
+            error!("Invalid token: {}", e);
+            return Err(AppError(format!("Invalid token: {}", e), StatusCode::UNAUTHORIZED).into());
+        }
     };
 
-    for msg in pending_messages {
+    let user_id = claims.sub.clone();
+    let conversation_id = path.into_inner();
+    info!("User {} is attempting to connect to conversation {}", user_id, conversation_id);
+
+    let conversation_service = match conversation_service::ConversationService::new(dbsession.clone()).await {
+        Ok(service) => service,
+        Err(e) => {
+            error!("Failed to create conversation service: {}", e);
+            return Err(e.into());
+        }
+    };
+
+    let conversation = match conversation_service.get_conversation(&conversation_id).await {
+        Ok(conv) => conv,
+        Err(e) => {
+            error!("Failed to fetch conversation {}: {}", conversation_id, e);
+            return Err(e.into());
+        }
+    };
+
+    if !conversation.participant_ids.contains(&user_id) {
+        warn!("User {} is not a participant of conversation {}. Closing connection.", user_id, conversation_id);
+        return Ok(HttpResponse::Unauthorized().finish());
+    }
+
+    let (tx, mut rx) = mpsc::unbounded_channel::<String>();
+    info!("Channel created for user {} in conversation {}", user_id, conversation_id);
+
+    let mut store = room_store.write().await;
+    let room = store.entry(conversation_id.clone()).or_insert_with(|| {
+        info!("Creating new RoomState for conversation {}", conversation_id);
+        RoomState {
+            senders: HashMap::new(),
+            pending_messages: HashMap::new(),
+        }
+    });
+
+    if room.senders.contains_key(&user_id) {
+        warn!("User {} is already connected to conversation {}. Rejecting duplicate connection.", user_id, conversation_id);
+        drop(store);
+        return Ok(HttpResponse::Forbidden().finish());
+    }
+
+    room.senders.insert(user_id.clone(), tx);
+    info!("User {} added to senders for conversation {}", user_id, conversation_id);
+
+    let mut pending = room.pending_messages.remove(&user_id).unwrap_or_default();
+    if !pending.is_empty() {
+        info!("Delivering {} pending messages to user {} in conversation {}", pending.len(), user_id, conversation_id);
+    }
+    drop(store);
+
+    for msg in pending.drain(..) {
+        debug!("Sending pending message to user {}: {}", user_id, msg);
         if let Err(e) = session.text(msg).await {
-            error!("Failed to send pending message: {}", e);
+            error!("Failed to send pending message to user {}: {}", user_id, e);
         }
     }
 
+    let participant_ids = conversation.participant_ids.clone();
+    let user_id_clone = user_id.clone();
+    let conversation_id_clone = conversation_id.clone();
 
-    let room_store = room_store.clone();
+    info!("WebSocket event loop starting for user {} in conversation {}", user_id, conversation_id);
+
     rt::spawn(async move {
+        let user_id = user_id_clone;
+        let conversation_id = conversation_id_clone;
+        
         loop {
             tokio::select! {
                 Some(msg) = stream.next() => {
                     match msg {
-                        Ok(AggregatedMessage::Text(text)) => {
-                            info!("Received text message: {}", text);
-                    
-                            #[derive(Deserialize)]
+                        Ok(Message::Text(text)) => {
+                            info!("Received message from user {}: {}", user_id, text);
+
+                            #[derive(Deserialize, Debug)]
                             struct IncomingMessage {
                                 content: String,
                                 conversationId: String,
                                 senderId: String,
                             }
-                            let conversation = conversation_service::ConversationService::new(dbsession.clone()).await.unwrap();
-                        
                             let incoming: Result<IncomingMessage, _> = serde_json::from_str(&text);
                             match incoming {
                                 Ok(msg) => {
-                                    match conversation.send_message(
+                                    info!("Parsed incoming message from user {}: {:?}", user_id, msg);
+                                    let conversation_service = match conversation_service::ConversationService::new(dbsession.clone()).await {
+                                        Ok(service) => service,
+                                        Err(e) => {
+                                            error!("Failed to create conversation service: {}", e);
+                                            continue;
+                                        }
+                                    };
+                                    match conversation_service.send_message(
                                         &msg.conversationId,
                                         &msg.senderId,
-                                        NewMessage {
-                                            content: msg.content,
-                                        },
+                                        NewMessage { content: msg.content.clone() }
                                     ).await {
                                         Ok(saved_msg) => {
-                                            let response = serde_json::to_string(&saved_msg).unwrap();
-                        
+                                            info!("Message from user {} saved to DB: {:?}", user_id, saved_msg);
+                                            let response = match serde_json::to_string(&saved_msg) {
+                                                Ok(resp) => resp,
+                                                Err(e) => {
+                                                    error!("Failed to serialize saved message: {}", e);
+                                                    continue;
+                                                }
+                                            };
+
+                                            // Send to all other participants
                                             let mut store = room_store.write().await;
-                                            let room = store.entry(conversation_id.clone()).or_insert_with(|| RoomState {
-                                                sender: None,
-                                                pending_messages: VecDeque::new(),
-                                            });
-                        
-                                            if let Some(other_tx) = &room.sender {
-                                                if let Err(e) = other_tx.send(response.clone()) {
-                                                    error!("Failed to send message to other user: {}", e);
-                                                    room.pending_messages.push_back(response);
+                                            if let Some(room) = store.get_mut(&conversation_id) {
+                                                for pid in &participant_ids {
+                                                    if pid == &user_id {
+                                                        debug!("Skipping echo to sender user {}.", user_id);
+                                                        continue;
+                                                    }
+                                                    if let Some(other_tx) = room.senders.get(pid) {
+                                                        debug!("Sending message to connected user {}: {}", pid, response);
+                                                        if let Err(e) = other_tx.send(response.clone()) {
+                                                            error!("Failed to send message to user {}: {}. Queuing for later.", pid, e);
+                                                            room.pending_messages.entry(pid.clone())
+                                                                .or_default()
+                                                                .push_back(response.clone());
+                                                        }
+                                                    } else {
+                                                        debug!("User {} not connected. Queuing message.", pid);
+                                                        room.pending_messages.entry(pid.clone())
+                                                            .or_default()
+                                                            .push_back(response.clone());
+                                                    }
                                                 }
                                             } else {
-                                                room.pending_messages.push_back(response);
+                                                warn!("RoomState for conversation {} not found while sending message.", conversation_id);
                                             }
                                         }
                                         Err(e) => {
-                                            error!("Failed to save message: {}", e);
+                                            error!("Failed to save message from user {}: {}", user_id, e);
                                         }
                                     }
                                 }
                                 Err(e) => {
-                                    error!("Failed to parse incoming message: {}", e);
-
+                                    error!("Failed to parse incoming message from user {}: {}", user_id, e);
                                 }
                             }
-                        }                                          
-                        Ok(AggregatedMessage::Close(_)) => break,
-                        Err(e) => {
-                            error!("WebSocket error: {}", e);
+                        }
+                        Ok(Message::Close(reason)) => {
+                            info!("WebSocket closed by user {} in conversation {}: {:?}", user_id, conversation_id, reason);
                             break;
                         }
-                        _ => {}
+                        Err(e) => {
+                            error!("WebSocket error for user {} in conversation {}: {}", user_id, conversation_id, e);
+                            break;
+                        }
+                        _ => {
+                            debug!("Received non-text message from user {} in conversation {}", user_id, conversation_id);
+                        }
                     }
                 }
+
                 Some(server_msg) = rx.recv() => {
+                    debug!("Sending server message to user {}: {}", user_id, server_msg);
                     if let Err(e) = session.text(server_msg).await {
-                        error!("Failed to send server message: {}", e);
+                        error!("Failed to send server message to user {}: {}", user_id, e);
                     }
                 }
-                else => break,
+                else => {
+                    info!("WebSocket event loop ending for user {} in conversation {}", user_id, conversation_id);
+                    break;
+                }
             }
         }
 
-        info!("WebSocket connection closed for conversation_id: {}", conversation_id);
+        // Cleanup on disconnect
         let mut store = room_store.write().await;
         if let Some(room) = store.get_mut(&conversation_id) {
-            room.sender = None;
-            if room.pending_messages.is_empty() {
+            info!("Cleaning up user {} from conversation {}", user_id, conversation_id);
+            room.senders.remove(&user_id);
+            if room.senders.is_empty() && room.pending_messages.is_empty() {
+                info!("No more users in conversation {}. Removing RoomState.", conversation_id);
                 store.remove(&conversation_id);
             }
+        } else {
+            warn!("RoomState for conversation {} not found during cleanup.", conversation_id);
         }
     });
+
+    info!("WebSocket handler setup complete for user {} in conversation {}", user_id, conversation_id);
 
     Ok(res)
 }

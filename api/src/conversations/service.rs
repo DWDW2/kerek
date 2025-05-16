@@ -1,9 +1,9 @@
 use scylla::client::session::Session;
-use crate::models::{
+use crate::{models::{
     conversation::{Conversation, NewConversation},
     message::{Message, NewMessage},
     user::User,
-};
+}, utils::one_to_one::one_to_one_key};
 use crate::error::AppError;
 use chrono::Utc;
 use uuid::{NoContext, Timestamp, Uuid};
@@ -29,12 +29,52 @@ impl ConversationService {
         creator_id: String,
     ) -> Result<Conversation, AppError> {
         let now = Utc::now().timestamp();
+        let is_group = new_conversation.participant_ids.len() > 2;
+    
+        // Only enforce uniqueness for 1:1 conversations
+        let one_to_one_key = if !is_group {
+            Some(one_to_one_key(
+                &creator_id,
+                &new_conversation.participant_ids
+                    .iter()
+                    .find(|id| *id != &creator_id)
+                    .ok_or_else(|| AppError("No other participant".to_string(), StatusCode::BAD_REQUEST))?,
+            ))
+        } else {
+            None
+        };
+    
+        if let Some(ref key) = one_to_one_key {
+            let stmt = Statement::new(
+                "SELECT conversation_id FROM one_to_one_conversations WHERE one_to_one_key = ?"
+            );
+            let mut rows = self.session.query_iter(stmt, (key,))
+                .await
+                .map_err(|e| AppError(format!("Failed to query one-to-one conversation: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?
+                .rows_stream::<(Uuid,)>()
+                .map_err(|e| AppError(format!("Failed to stream conversation: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?;
+
+            if let Some((conversation_id,)) = rows.try_next().await
+                .map_err(|e| AppError(format!("Failed to get next row: {}", e), StatusCode::INTERNAL_SERVER_ERROR))? {
+                let participants = self.get_conversation_participants(&conversation_id.to_string()).await?;
+                return Ok(Conversation {
+                    id: conversation_id.to_string(),
+                    name: new_conversation.name,
+                    is_group: false,
+                    created_at: now,
+                    updated_at: now,
+                    last_message_at: None,
+                    participant_ids: participants.into_iter().map(|p| p.to_string()).collect(),
+                });
+            }
+        }
+    
         let conversation_id = Uuid::new_v4();
         let creator_uuid = Uuid::parse_str(&creator_id)
             .map_err(|e| AppError(format!("Invalid creator ID: {}", e), StatusCode::BAD_REQUEST))?;
-
+    
         let create_conv_stmt = Statement::new(
-            "INSERT INTO conversations (conversation_id, title, created_at, updated_at) VALUES (?, ?, ?, ?)"
+            "INSERT INTO conversations (conversation_id, title, created_at, updated_at, one_to_one_key) VALUES (?, ?, ?, ?, ?)"
         );
         self.session.query_unpaged(
             create_conv_stmt,
@@ -43,9 +83,19 @@ impl ConversationService {
                 &new_conversation.name,
                 CqlTimestamp(now),
                 CqlTimestamp(now),
+                one_to_one_key.as_deref(),
             )
         ).await.map_err(|e| AppError(format!("Failed to create conversation: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?;
-
+    
+        if let Some(ref key) = one_to_one_key {
+            let stmt = Statement::new(
+                "INSERT INTO one_to_one_conversations (one_to_one_key, conversation_id) VALUES (?, ?)"
+            );
+            self.session.query_unpaged(stmt, (key, conversation_id)).await.map_err(|e| {
+                AppError(format!("Failed to insert into one_to_one_conversations: {}", e), StatusCode::INTERNAL_SERVER_ERROR)
+            })?;
+        }
+    
         let add_creator_participant_stmt = Statement::new(
             "INSERT INTO conversation_participants (conversation_id, user_id, joined_at) VALUES (?, ?, ?)"
         );
@@ -53,7 +103,7 @@ impl ConversationService {
             add_creator_participant_stmt,
             (conversation_id, creator_uuid, CqlTimestamp(now))
         ).await.map_err(|e| AppError(format!("Failed to add creator to conversation: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?;
-
+    
         let add_creator_user_conv_stmt = Statement::new(
             "INSERT INTO user_conversations (user_id, conversation_id, joined_at) VALUES (?, ?, ?)"
         );
@@ -61,7 +111,7 @@ impl ConversationService {
             add_creator_user_conv_stmt,
             (creator_uuid, conversation_id, CqlTimestamp(now))
         ).await.map_err(|e| AppError(format!("Failed to add creator to user_conversations: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?;
-
+    
         for participant_id in new_conversation.participant_ids {
             if participant_id != creator_id {
                 let participant_uuid = Uuid::parse_str(&participant_id)
@@ -74,7 +124,7 @@ impl ConversationService {
                     add_participant_stmt,
                     (conversation_id, participant_uuid, CqlTimestamp(now))
                 ).await.map_err(|e| AppError(format!("Failed to add participant to conversation: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?;
-
+    
                 let add_user_conv_stmt = Statement::new(
                     "INSERT INTO user_conversations (user_id, conversation_id, joined_at) VALUES (?, ?, ?)"
                 );
@@ -84,9 +134,9 @@ impl ConversationService {
                 ).await.map_err(|e| AppError(format!("Failed to add participant to user_conversations: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?;
             }
         }
-
+    
         let participants = self.get_conversation_participants(&conversation_id.to_string()).await?;
-
+    
         Ok(Conversation {
             id: conversation_id.to_string(),
             name: new_conversation.name,
@@ -97,6 +147,7 @@ impl ConversationService {
             participant_ids: participants.into_iter().map(|p| p.to_string()).collect(),
         })
     }
+    
 
     async fn get_conversation_participants(&self, conversation_id: &str) -> Result<Vec<Uuid>, AppError> {
         let conv_uuid = Uuid::parse_str(conversation_id)

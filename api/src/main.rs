@@ -29,7 +29,7 @@ async fn main() -> std::io::Result<()> {
     let session = db::connect().await.unwrap();
     let session_data = web::Data::new(session);
 
-    db::setup_database(&session_data, false).await.unwrap();
+    db::setup_database(&session_data, true).await.unwrap();
 
     let host = env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
     let port = env::var("PORT")

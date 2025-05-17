@@ -16,7 +16,7 @@ use crate::error::AppError;
 use crate::conversations::service as conversation_service;
 
 pub struct RoomState {
-    pub senders: HashMap<String, mpsc::UnboundedSender<String>>, // user_id -> sender
+    pub senders: HashMap<String, Vec<mpsc::UnboundedSender<String>>>, // user_id -> senders
     pub pending_messages: HashMap<String, VecDeque<String>>,     // user_id -> pending
 }
 
@@ -98,13 +98,13 @@ pub async fn echo(
         }
     });
 
-    if room.senders.contains_key(&user_id) {
-        warn!("User {} is already connected to conversation {}. Rejecting duplicate connection.", user_id, conversation_id);
-        drop(store);
-        return Ok(HttpResponse::Forbidden().finish());
-    }
+    // if room.senders.contains_key(&user_id) {
+    //     warn!("User {} is already connected to conversation {}. Rejecting duplicate connection.", user_id, conversation_id);
+    //     drop(store);
+    //     return Ok(HttpResponse::Forbidden().finish());
+    // }
 
-    room.senders.insert(user_id.clone(), tx);
+    room.senders.entry(user_id.clone()).or_default().push(tx);
     info!("User {} added to senders for conversation {}", user_id, conversation_id);
 
     let mut pending = room.pending_messages.remove(&user_id).unwrap_or_default();
@@ -169,7 +169,6 @@ pub async fn echo(
                                                 }
                                             };
 
-                                            // Send to all other participants
                                             let mut store = room_store.write().await;
                                             if let Some(room) = store.get_mut(&conversation_id) {
                                                 for pid in &participant_ids {
@@ -177,10 +176,18 @@ pub async fn echo(
                                                         debug!("Skipping echo to sender user {}.", user_id);
                                                         continue;
                                                     }
-                                                    if let Some(other_tx) = room.senders.get(pid) {
+                                                    if let Some(other_txs) = room.senders.get(pid) {
                                                         debug!("Sending message to connected user {}: {}", pid, response);
-                                                        if let Err(e) = other_tx.send(response.clone()) {
-                                                            error!("Failed to send message to user {}: {}. Queuing for later.", pid, e);
+                                                        let mut all_failed = true;
+                                                        for tx in other_txs {
+                                                            if let Err(e) = tx.send(response.clone()) {
+                                                                error!("Failed to send message to user {} on one connection: {}", pid, e);
+                                                            } else {
+                                                                all_failed = false;
+                                                            }
+                                                        }
+                                                        if all_failed {
+                                                            error!("All connections failed for user {}. Queuing for later.", pid);
                                                             room.pending_messages.entry(pid.clone())
                                                                 .or_default()
                                                                 .push_back(response.clone());
@@ -233,7 +240,6 @@ pub async fn echo(
             }
         }
 
-        // Cleanup on disconnect
         let mut store = room_store.write().await;
         if let Some(room) = store.get_mut(&conversation_id) {
             info!("Cleaning up user {} from conversation {}", user_id, conversation_id);

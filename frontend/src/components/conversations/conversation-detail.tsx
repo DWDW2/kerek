@@ -53,6 +53,8 @@ export function ConversationDetail() {
     [setMessages]
   );
 
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
     if (!user?.id || !id) return;
 
@@ -64,34 +66,50 @@ export function ConversationDetail() {
     const token = localStorage.getItem("auth_token");
     if (!token) return;
 
-    const ws = new WebSocket(`ws://localhost:8080/ws/${id}?token=${token}`);
-    wsRef.current = ws;
+    let shouldReconnect = true;
 
-    ws.onopen = () => {
-      setIsConnected(true);
-      setWsError(null);
-      console.log("WebSocket connected");
-    };
+    function connectWS() {
+      const ws = new WebSocket(`ws://localhost:8080/ws/${id}?token=${token}`);
+      wsRef.current = ws;
 
-    ws.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data) as Message;
-        mergeMessages([message]);
-      } catch (error) {
-        console.error("Failed to parse WebSocket message:", error);
-      }
-    };
+      ws.onopen = () => {
+        setIsConnected(true);
+        setWsError(null);
+        console.log("WebSocket connected");
+      };
 
-    ws.onclose = () => {
-      setIsConnected(false);
-      setWsError("Connection closed");
-      console.log("WebSocket disconnected");
-    };
+      ws.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data) as Message;
+          mergeMessages([message]);
+        } catch (error) {
+          console.error("Failed to parse WebSocket message:", error);
+        }
+      };
+
+      ws.onclose = () => {
+        setIsConnected(false);
+        setWsError("Connection closed");
+        console.log("WebSocket disconnected");
+        if (shouldReconnect) {
+          reconnectTimeoutRef.current = setTimeout(() => {
+            connectWS();
+          }, 2000);
+        }
+      };
+    }
+
+    connectWS();
 
     return () => {
+      shouldReconnect = false;
       if (wsRef.current) {
         wsRef.current.close();
         wsRef.current = null;
+      }
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
       }
     };
   }, [id, user?.id, mergeMessages]);

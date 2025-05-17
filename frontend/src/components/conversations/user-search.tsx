@@ -62,7 +62,7 @@ export function UserSearch() {
     }
   };
 
-  const startConversation = async (userId: string) => {
+  const handleUserSelect = async (userId: string) => {
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/conversations`,
@@ -122,7 +122,7 @@ export function UserSearch() {
                 {users.map((user) => (
                   <CommandItem
                     key={user.id}
-                    onSelect={() => startConversation(user.id)}
+                    onSelect={() => handleUserSelect(user.id)}
                     className="flex items-center justify-between p-2"
                   >
                     <div>
@@ -134,7 +134,10 @@ export function UserSearch() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => startConversation(user.id)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleUserSelect(user.id);
+                      }}
                     >
                       Message
                     </Button>

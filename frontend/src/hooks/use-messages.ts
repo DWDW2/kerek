@@ -1,60 +1,86 @@
-import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect, useCallback } from "react";
+import { Message } from "@/types/conversation";
 
-interface Message {
-  id: string;
-  content: string;
-  sender_id: string;
-  conversation_id: string;
-  created_at: string;
-}
-
-interface UseMessagesOptions {
-  conversationId: string;
-  limit?: number;
-  enabled?: boolean;
-}
-
-export function useMessages({
-  conversationId,
-  limit = 50,
-  enabled = true,
-}: UseMessagesOptions) {
+export function useMessages(id: string) {
   const [messages, setMessages] = useState<Message[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["messages", conversationId, limit],
-    queryFn: async () => {
-      const response = await fetch(
-        `/api/conversations/${conversationId}/messages?limit=${limit}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "include",
-        }
+  const mergeMessages = useCallback((newMsgs: Message[]) => {
+    setMessages((prev) => {
+      const map = new Map<string, Message>();
+      [...newMsgs, ...prev].forEach((msg) => map.set(msg.id, msg));
+      return Array.from(map.values()).sort(
+        (a, b) =>
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       );
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch messages");
-      }
-
-      const data = await response.json();
-      return data as Message[];
-    },
-    enabled,
-  });
+    });
+  }, []);
 
   useEffect(() => {
-    if (data) {
-      setMessages(data);
+    const loadMessages = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/conversations/${id}/messages?limit=20`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+            },
+          }
+        );
+        if (!response.ok) throw new Error("Failed to load messages");
+        const data = await response.json();
+        setMessages(data.reverse());
+        setHasMore(data.length === 20);
+      } catch (error) {
+        console.error("Failed to load messages:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (id) {
+      loadMessages();
     }
-  }, [data]);
+  }, [id]);
+
+  const loadOlderMessages = async () => {
+    if (isLoadingMore || !messages.length) return;
+    setIsLoadingMore(true);
+    try {
+      const oldest = messages[0];
+      const response = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_URL
+        }/conversations/${id}/messages?limit=20&before=${encodeURIComponent(
+          oldest.created_at
+        )}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+          },
+        }
+      );
+      if (!response.ok) throw new Error("Failed to load older messages");
+      const data = await response.json();
+      if (data.length === 0) setHasMore(false);
+      mergeMessages(data.reverse());
+    } catch (error) {
+      console.error("Failed to load older messages:", error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
 
   return {
     messages,
     isLoading,
-    error,
-    refetch,
+    hasMore,
+    isLoadingMore,
+    loadOlderMessages,
+    setMessages,
+    mergeMessages,
   };
 }

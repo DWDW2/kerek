@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { SendHorizontal } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -11,52 +11,37 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/lib/auth-context";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-
-interface Message {
-  id: string;
-  content: string;
-  senderId: string;
-  createdAt: string;
-}
-
-interface Conversation {
-  id: string;
-  participant_ids: string[];
-}
+import { useMessages } from "@/hooks/use-messages";
+import { Message } from "@/types/conversation";
+import { useConversation } from "@/hooks/use-conversation";
 
 export function ConversationDetail() {
-  const { id } = useParams();
+  const { id: conversationId } = useParams();
   const [newMessage, setNewMessage] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
-  const [conversation, setConversation] = useState<Conversation | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [hasMore, setHasMore] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [wsError, setWsError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const { user } = useAuth();
 
-  const mergeMessages = useCallback(
-    (newMsgs: Message[]) => {
-      setMessages((prev) => {
-        const map = new Map<string, Message>();
-        [...newMsgs, ...prev].forEach((msg) => map.set(msg.id, msg));
-        return Array.from(map.values()).sort(
-          (a, b) =>
-            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-        );
-      });
-    },
-    [setMessages]
+  const {
+    messages,
+    isLoading: isLoadingMessages,
+    hasMore,
+    isLoadingMore,
+    loadOlderMessages,
+    setMessages,
+    mergeMessages,
+  } = useMessages(conversationId as string);
+  const { conversation, isLoading: isLoadingConversation } = useConversation(
+    conversationId as string
   );
 
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    if (!user?.id || !id) return;
+    if (!user?.id || !conversationId) return;
 
     if (wsRef.current) {
       wsRef.current.close();
@@ -69,7 +54,9 @@ export function ConversationDetail() {
     let shouldReconnect = true;
 
     function connectWS() {
-      const ws = new WebSocket(`ws://localhost:8080/ws/${id}?token=${token}`);
+      const ws = new WebSocket(
+        `ws://localhost:8080/ws/${conversationId}?token=${token}`
+      );
       wsRef.current = ws;
 
       ws.onopen = () => {
@@ -112,89 +99,13 @@ export function ConversationDetail() {
         reconnectTimeoutRef.current = null;
       }
     };
-  }, [id, user?.id, mergeMessages]);
-
-  useEffect(() => {
-    const loadConversation = async () => {
-      try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/conversations/${id}`,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
-            },
-          }
-        );
-        if (!response.ok) throw new Error("Failed to load conversation");
-        const data = await response.json();
-        setConversation(data);
-      } catch (error) {
-        console.error("Failed to load conversation details:", error);
-      }
-    };
-
-    loadConversation();
-  }, [id]);
-
-  useEffect(() => {
-    const loadMessages = async () => {
-      setIsLoading(true);
-      try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/conversations/${id}/messages?limit=20`,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
-            },
-          }
-        );
-        if (!response.ok) throw new Error("Failed to load messages");
-        const data = await response.json();
-        setMessages(data.reverse()); // oldest first
-        setHasMore(data.length === 20);
-      } catch (error) {
-        console.error("Failed to load messages:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadMessages();
-  }, [id]);
+  }, [conversationId, user?.id, mergeMessages]);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages.length]);
-
-  const loadOlderMessages = async () => {
-    if (isLoadingMore || !messages.length) return;
-    setIsLoadingMore(true);
-    try {
-      const oldest = messages[0];
-      const response = await fetch(
-        `${
-          process.env.NEXT_PUBLIC_API_URL
-        }/conversations/${id}/messages?limit=20&before=${encodeURIComponent(
-          oldest.createdAt
-        )}`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
-          },
-        }
-      );
-      if (!response.ok) throw new Error("Failed to load older messages");
-      const data = await response.json();
-      if (data.length === 0) setHasMore(false);
-      mergeMessages(data.reverse());
-    } catch (error) {
-      console.error("Failed to load older messages:", error);
-    } finally {
-      setIsLoadingMore(false);
-    }
-  };
 
   const sendMessage = async (content: string) => {
     if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
@@ -203,11 +114,21 @@ export function ConversationDetail() {
 
     const message = {
       content,
-      conversationId: id,
+      conversationId: conversationId,
       senderId: user?.id,
     };
 
     wsRef.current.send(JSON.stringify(message));
+
+    const tempMessage: Message = {
+      id: Date.now().toString(),
+      content: content,
+      sender_id: user?.id as string,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      conversation_id: conversationId as string,
+    };
+    setMessages((prev) => [...prev, tempMessage]);
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -225,6 +146,8 @@ export function ConversationDetail() {
       setIsSending(false);
     }
   };
+
+  const isLoading = isLoadingConversation || isLoadingMessages;
 
   if (isLoading) {
     return (
@@ -298,7 +221,7 @@ export function ConversationDetail() {
                 key={message.id}
                 className={cn(
                   "flex w-full",
-                  message.senderId === user?.id
+                  message.sender_id === user?.id
                     ? "justify-end"
                     : "justify-start"
                 )}
@@ -306,14 +229,14 @@ export function ConversationDetail() {
                 <div
                   className={cn(
                     "max-w-[70%] rounded-2xl px-4 py-2.5",
-                    message.senderId === user?.id
+                    message.sender_id === user?.id
                       ? "bg-primary text-primary-foreground rounded-tr-none"
                       : "bg-muted rounded-tl-none"
                   )}
                 >
                   <p className="text-sm leading-relaxed">{message.content}</p>
                   <p className="text-xs mt-1 opacity-70 text-right">
-                    {new Date(message.createdAt).toLocaleTimeString([], {
+                    {new Date(message.created_at).toLocaleTimeString([], {
                       hour: "2-digit",
                       minute: "2-digit",
                     })}

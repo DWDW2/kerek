@@ -62,13 +62,19 @@ pub async fn find_by_email(session: &web::Data<Session>, email: &str) -> Result<
 
 pub async fn find_by_id(session: &web::Data<Session>, id: &str) -> Result<Option<User>, AppError> {
     let uuid = Uuid::parse_str(id).map_err(|e| AppError(format!("Invalid UUID format: {}", e), StatusCode::BAD_REQUEST))?;
-
+    let smnt = Statement::new("SELECT id, username, email, password_hash, created_at, updated_at, last_seen_at, is_online FROM users WHERE id = ?");
     let mut iter = session.query_iter(
-        "SELECT id, username, email, password_hash, created_at, updated_at, last_seen_at, is_online FROM users WHERE id = ?",
+        smnt,
         (uuid,),
-    ).await.map_err(|e| AppError(format!("Failed to prepare query: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?
+    ).await.map_err(|e| {
+        log::info!("Database query error: {:?}", e);
+        AppError(format!("Failed to prepare query: {}", e), StatusCode::INTERNAL_SERVER_ERROR)
+    })?
         .rows_stream::<(Uuid, String, String, String, CqlTimestamp, CqlTimestamp, Option<CqlTimestamp>, bool)>()
-        .map_err(|e| AppError(format!("Failed to get rows stream: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?;
+        .map_err(|e| {
+            log::info!("Stream error: {:?}", e);
+            AppError(format!("Failed to get rows stream: {}", e), StatusCode::INTERNAL_SERVER_ERROR)
+        })?;
 
     match iter.try_next().await {
         Ok(Some(row)) => {
@@ -175,6 +181,52 @@ pub async fn search_users(
                 is_online,
             });
         }
+    }
+
+    Ok(users)
+}
+
+pub async fn get_all_users(session: &web::Data<Session>) -> Result<Vec<UserProfile>, AppError> {
+    let mut iter = session
+        .query_iter(
+            "SELECT id, username, email, created_at, last_seen_at, is_online FROM users",
+            (),
+        )
+        .await
+        .map_err(|e| {
+            AppError(
+                format!("Failed to prepare query: {}", e),
+                StatusCode::INTERNAL_SERVER_ERROR,
+            )
+        })?
+        .rows_stream::<(Uuid, String, String, CqlTimestamp, Option<CqlTimestamp>, bool)>()
+        .map_err(|e| {
+            AppError(
+                format!("Failed to get rows stream: {}", e),
+                StatusCode::INTERNAL_SERVER_ERROR,
+            )
+        })?;
+
+    let mut users = Vec::new();
+    while let Some(row) = iter
+        .try_next()
+        .await
+        .map_err(|e| {
+            AppError(
+                format!("Failed to process users: {}", e),
+                StatusCode::INTERNAL_SERVER_ERROR,
+            )
+        })?
+    {
+        let (id, username, email, created_at, last_seen_at, is_online) = row;
+        users.push(UserProfile {
+            id: id.to_string(),
+            username,
+            email,
+            created_at: created_at.0,
+            last_seen_at: last_seen_at.map(|ts| ts.0),
+            is_online,
+        });
     }
 
     Ok(users)

@@ -3,6 +3,7 @@ use bcrypt::verify;
 use jsonwebtoken::{encode, Header, EncodingKey};
 use chrono::{Utc, Duration};
 use scylla::client::session::Session;
+use serde_json::json;
 use crate::error::AppError;
 use crate::models::user::{NewUser, LoginRequest, AuthResponse, UpdateProfileRequest};
 use serde::{Serialize, Deserialize};
@@ -61,9 +62,9 @@ pub async fn login(
 
 pub async fn get_profile(
     session: web::Data<Session>,
-    user_id: web::Json<UserId>
+    user_id: web::Path<String>
 ) -> Result<impl Responder, AppError> {
-    let user = service::find_by_id(&session, &user_id.id).await?
+    let user = service::find_by_id(&session, &user_id).await?
         .ok_or_else(|| AppError("User not found".to_string(), actix_web::http::StatusCode::NOT_FOUND))?;
 
     Ok(HttpResponse::Ok().json(user.to_profile()))
@@ -133,6 +134,21 @@ pub async fn get_me(
         .ok_or_else(|| AppError("User not found".to_string(), actix_web::http::StatusCode::NOT_FOUND))?;
 
     Ok(HttpResponse::Ok().json(user.to_profile()))
+}
+
+pub async fn get_all_users(
+    session: web::Data<Session>,
+) -> Result<impl Responder, AppError> {
+    let users = service::get_all_users(&session).await?;
+    Ok(HttpResponse::Ok().json(users))
+}
+
+pub async fn set_user_online(
+    session: web::Data<Session>,
+    user_id: web::Json<UserId>,
+) -> Result<impl Responder, AppError> {
+    service::update_user_status(&session, &user_id.id, true).await?;
+    Ok(HttpResponse::Ok().json(json!({ "status": "online" })))
 }
 
 #[derive(serde::Deserialize)]

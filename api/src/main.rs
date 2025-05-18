@@ -16,6 +16,7 @@ use crate::users::handler as user_handler;
 use crate::conversations::handler as conversation_handler;
 use crate::utils::websocket as websocket_handler;
 use crate::utils::websocket::RoomStore;
+use crate::utils::seed;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use std::collections::HashMap;
@@ -25,11 +26,17 @@ async fn main() -> std::io::Result<()> {
     dotenv().ok();
     env_logger::init_from_env(Env::default().default_filter_or("info"));
 
-
     let session = db::connect().await.unwrap();
     let session_data = web::Data::new(session);
 
-    db::setup_database(&session_data, false).await.unwrap();
+    let should_seed = env::args().any(|arg| arg == "--seed");
+    db::setup_database(&session_data, should_seed).await.unwrap();
+
+    if should_seed {
+        println!("Seeding database...");
+        seed::seed_database(&session_data).await.unwrap();
+        println!("Database seeded successfully!");
+    }
 
     let host = env::var("HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
     let port = env::var("PORT")
@@ -68,9 +75,11 @@ async fn main() -> std::io::Result<()> {
                             .service(
                                 web::scope("/users")
                                     .route("/me", web::get().to(user_handler::get_me))
-                                    .route("/profile", web::get().to(user_handler::get_profile))
+                                    .route("/profile/{id}", web::get().to(user_handler::get_profile))
                                     .route("/profile/{id}", web::put().to(user_handler::update_profile))
                                     .route("/profile/search", web::get().to(user_handler::search_users))
+                                    .route("", web::get().to(user_handler::get_all_users))
+                                    .route("/online", web::post().to(user_handler::set_user_online))
                             )
                             .service(
                                 web::scope("/conversations")

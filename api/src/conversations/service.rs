@@ -31,7 +31,6 @@ impl ConversationService {
         let now = Utc::now().timestamp();
         let is_group = new_conversation.participant_ids.len() > 2;
     
-        // Only enforce uniqueness for 1:1 conversations
         let one_to_one_key = if !is_group {
             Some(one_to_one_key(
                 &creator_id,

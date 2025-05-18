@@ -1,3 +1,5 @@
+use actix::fut::stream;
+use actix::WrapStream;
 use actix_web::{rt, web, Error, HttpRequest, HttpResponse};
 use actix_ws::Message;
 use futures_util::StreamExt as _;
@@ -5,15 +7,19 @@ use scylla::client::session::Session;
 use log::{info, error, warn, debug};
 use actix_web::http::StatusCode;
 use jsonwebtoken::{decode, DecodingKey, Validation};
+use scylla::statement::Statement;
 use serde::Deserialize;
+use tokio::time::interval;
 use std::env;
 use std::collections::{HashMap, VecDeque};
+use std::fmt::format;
 use std::sync::Arc;
-use tokio::sync::{RwLock, mpsc};
+use tokio::sync::{RwLock, mpsc };
 use crate::models::message::NewMessage;
 use crate::utils::jwt::Claims;
 use crate::error::AppError;
 use crate::conversations::service as conversation_service;
+use std::time::{Duration, Instant};
 
 pub struct RoomState {
     pub senders: HashMap<String, Vec<mpsc::UnboundedSender<String>>>, // user_id -> senders
@@ -27,7 +33,7 @@ pub struct ConversationQuery {
     token: String,
 }
 
-pub async fn echo(
+pub async fn messages(
     req: HttpRequest,
     stream: web::Payload,
     path: web::Path<String>,
@@ -97,12 +103,6 @@ pub async fn echo(
             pending_messages: HashMap::new(),
         }
     });
-
-    // if room.senders.contains_key(&user_id) {
-    //     warn!("User {} is already connected to conversation {}. Rejecting duplicate connection.", user_id, conversation_id);
-    //     drop(store);
-    //     return Ok(HttpResponse::Forbidden().finish());
-    // }
 
     room.senders.entry(user_id.clone()).or_default().push(tx);
     info!("User {} added to senders for conversation {}", user_id, conversation_id);
@@ -256,4 +256,87 @@ pub async fn echo(
     info!("WebSocket handler setup complete for user {} in conversation {}", user_id, conversation_id);
 
     Ok(res)
+}
+
+pub async fn online(
+    req: HttpRequest, 
+    stream: web::Payload, 
+    user_id: web::Path<String>, 
+    dbsession: web::Data<Session>
+) -> Result<HttpResponse, AppError> {
+    let user_id = user_id.into_inner();
+    
+    let res = actix_ws::handle(&req, stream);    
+    let (response, mut session, mut stream) = match res {
+        Ok((response, _session, _stream)) => (response, _session, _stream),
+        Err(e) => return Err(AppError(format!("error with the handling stream: {:?}", e), StatusCode::INTERNAL_SERVER_ERROR))
+    };
+
+    update_user_online_status(&dbsession, &user_id, true).await?;
+    
+    let user_id_clone = user_id.clone();
+    let db_clone = dbsession.clone();
+
+    rt::spawn(async move {
+        const PING_INTERVAL: Duration = Duration::from_secs(30);
+        let mut ping_timer = interval(PING_INTERVAL);
+        
+        loop {
+            tokio::select! {
+                _ = ping_timer.tick() => {
+                    // Try to ping the client
+                    if let Err(e) = session.ping(b"").await {
+                        log::error!("Failed to ping client: {:?}", e);
+                        // Client disconnected, update status to offline
+                        if let Err(e) = update_user_online_status(&db_clone, &user_id_clone, false).await {
+                            log::error!("Failed to update user offline status: {:?}", e);
+                        }
+                        break;
+                    }
+                }
+                msg = stream.recv() => {
+                    match msg {
+                        Some(Ok(Message::Close(_))) => {
+
+                            if let Err(e) = update_user_online_status(&db_clone, &user_id_clone, false).await {
+                                log::error!("Failed to update user offline status: {:?}", e);
+                            }
+                            break;
+                        }
+                        Some(Ok(_)) => {
+                            continue;
+                        }
+                        Some(Err(e)) => {
+                            log::error!("WebSocket error: {:?}", e);
+                            if let Err(e) = update_user_online_status(&db_clone, &user_id_clone, false).await {
+                                log::error!("Failed to update user offline status: {:?}", e);
+                            }
+                            break;
+                        }
+                        None => {
+
+                            if let Err(e) = update_user_online_status(&db_clone, &user_id_clone, false).await {
+                                log::error!("Failed to update user offline status: {:?}", e);
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    Ok(response)
+}
+
+
+
+async fn update_user_online_status(session: &Session, user_id: &String, is_online: bool) -> Result<(), AppError>{
+    let stm = Statement::new("UPDATE users SET is_online = ? WHERE user_id = ?");
+
+
+    let _ = session.query_unpaged(stm, (is_online, user_id)).await
+    .map_err(|e|  AppError(format!("Error occured when querying db {}", e), StatusCode::INTERNAL_SERVER_ERROR));
+
+    Ok(())
 }

@@ -23,7 +23,7 @@ export function OnlineStatusProvider({
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/users/online`,
+        `${process.env.NEXT_PUBLIC_API_URL}/users/online`,
         {
           method: "POST",
           headers: {

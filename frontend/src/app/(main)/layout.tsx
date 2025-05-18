@@ -1,5 +1,5 @@
 import { ProtectedRoute } from "@/components/auth/protected-route";
-import OnlineProviderWrapper from "@/components/online-provider-wrapper";
+import { OnlineStatusProvider } from "@/components/providers/online-status-provider";
 import React from "react";
 
 type Props = {
@@ -8,8 +8,8 @@ type Props = {
 
 export default function layout({ children }: Props) {
   return (
-    <OnlineProviderWrapper>
+    <OnlineStatusProvider>
       <ProtectedRoute>{children}</ProtectedRoute>
-    </OnlineProviderWrapper>
+    </OnlineStatusProvider>
   );
 }

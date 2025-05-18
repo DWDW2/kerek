@@ -1,12 +1,13 @@
 "use client";
+
 import { createContext, useContext, useEffect, useState } from "react";
-import { useAuth } from "@/lib/auth-context";
+import { useAuth } from "@/hooks/use-auth";
 
 interface OnlineStatusContextType {
   isOnline: boolean;
 }
 
-export const OnlineStatusContext = createContext<OnlineStatusContextType>({
+const OnlineStatusContext = createContext<OnlineStatusContextType>({
   isOnline: false,
 });
 
@@ -16,23 +17,19 @@ export function OnlineStatusProvider({
   children: React.ReactNode;
 }) {
   const [isOnline, setIsOnline] = useState(false);
-  const { user, token } = useAuth();
+  const { user } = useAuth();
 
   const setUserOnlineStatus = async (status: boolean) => {
     if (!user?.id) return;
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/users/online`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ id: user.id }),
-        }
-      );
+      const response = await fetch("/api/users/online", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id: user.id }),
+      });
 
       if (!response.ok) {
         throw new Error("Failed to update online status");
@@ -47,8 +44,10 @@ export function OnlineStatusProvider({
   useEffect(() => {
     if (!user?.id) return;
 
+    // Set user online when component mounts
     setUserOnlineStatus(true);
 
+    // Handle visibility change
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
         setUserOnlineStatus(true);
@@ -57,10 +56,12 @@ export function OnlineStatusProvider({
       }
     };
 
+    // Handle beforeunload
     const handleBeforeUnload = () => {
       setUserOnlineStatus(false);
     };
 
+    // Handle online/offline events
     const handleOnline = () => {
       setUserOnlineStatus(true);
     };
@@ -69,11 +70,13 @@ export function OnlineStatusProvider({
       setIsOnline(false);
     };
 
+    // Add event listeners
     document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("beforeunload", handleBeforeUnload);
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
 
+    // Cleanup function
     return () => {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("beforeunload", handleBeforeUnload);

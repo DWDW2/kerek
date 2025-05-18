@@ -59,8 +59,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(session_data.clone())
             .app_data(web::Data::new(room_store.clone()))
             .app_data(web::Data::new(jwt_secret.clone()))
-            .route("/online/{id}", web::get().to(websocket_handler::online))
-            .route("/ws/{id}", web::get().to(websocket_handler::messages))
+            .route("/ws/{id}", web::get().to(websocket_handler::echo))
             .service(
                 web::scope("/api")
                     .service(

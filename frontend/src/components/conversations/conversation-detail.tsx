@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { SendHorizontal } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -9,11 +9,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/lib/auth-context";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useMessages } from "@/hooks/use-messages";
 import { Message } from "@/types/conversation";
 import { useConversation } from "@/hooks/use-conversation";
+import { useUser } from "@/hooks/use-user";
 
 export function ConversationDetail() {
   const { id: conversationId } = useParams();
@@ -24,7 +24,6 @@ export function ConversationDetail() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const { user } = useAuth();
-
   const {
     messages,
     isLoading: isLoadingMessages,
@@ -37,6 +36,9 @@ export function ConversationDetail() {
   const { conversation, isLoading: isLoadingConversation } = useConversation(
     conversationId as string
   );
+  const { user: reciever } = useUser({
+    id: conversation?.participant_ids.find((p) => p !== user?.id) || "",
+  });
 
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -178,18 +180,14 @@ export function ConversationDetail() {
     return <div>Conversation not found</div>;
   }
 
-  const otherParticipant = conversation.participant_ids.find(
-    (p) => p !== user?.id
-  );
-
   return (
     <Card className="h-full flex flex-col border-none shadow-none rounded-none">
       <CardHeader className="border-b px-6 py-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg font-semibold">
-            Chat with {otherParticipant}
+            Chat with {reciever?.username}
           </CardTitle>
-          <Badge
+          {/* <Badge
             variant={isConnected ? "default" : "destructive"}
             className={cn(
               "transition-colors",
@@ -197,7 +195,7 @@ export function ConversationDetail() {
             )}
           >
             {isConnected ? "Connected" : "Disconnected"}
-          </Badge>
+          </Badge> */}
         </div>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col p-0">

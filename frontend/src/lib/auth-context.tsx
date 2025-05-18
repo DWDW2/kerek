@@ -2,16 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-
-interface User {
-  id: string;
-  username: string;
-  email: string;
-  created_at: number;
-  updated_at: number;
-  last_seen_at: number | null;
-  is_online: boolean;
-}
+import { User } from "@/types/user";
 
 interface AuthResponse {
   token: string;

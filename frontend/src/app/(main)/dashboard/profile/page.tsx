@@ -13,9 +13,9 @@ interface Conversation {
 async function getProfileData(token: string) {
   "use server";
 
-  const conversations = (await listConversations(token)) as Conversation[];
-
-  // Calculate user statistics
+  const conversations = (await listConversations(
+    token
+  )) as unknown as Conversation[];
   const totalMessages = conversations.reduce(
     (acc, conv) => acc + (conv.message_count || 0),
     0

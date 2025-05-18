@@ -1,17 +1,69 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
-import { UserSearch } from "@/components/conversations/user-search";
-import { ConversationList } from "@/components/conversations/conversation-list";
-import ForceGraph2D from "react-force-graph-2d";
+import ForceGraph2D, { ForceGraphMethods } from "react-force-graph-2d";
 import { User } from "@/types/user";
-interface Node {
-  nodes: Partial<User>[];
-  links: any[];
+import { useAuth } from "@/lib/auth-context";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+
+interface NodeData {
+  id: string;
+  name: string;
+  color: string;
+  val: number;
 }
+
+interface LinkData {
+  source: string;
+  target: string;
+  value: number;
+  type?: string;
+}
+
+interface GraphData {
+  nodes: NodeData[];
+  links: LinkData[];
+}
+
 export default function ConversationsPage() {
   const [users, setUsers] = useState<User[]>([]);
-  const [graphData, setGraphData] = useState<Node>({ nodes: [], links: [] });
-  const graphRef = useRef(null);
+  const [graphData, setGraphData] = useState<GraphData>({
+    nodes: [],
+    links: [],
+  });
+  const { user } = useAuth();
+  const router = useRouter();
+  const graphRef = useRef<ForceGraphMethods | null>(null);
+
+  const createConversation = async (targetUserId: string) => {
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/conversations`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+          },
+          body: JSON.stringify({
+            participant_ids: [user?.id, targetUserId],
+            is_group: false,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to create conversation");
+      }
+
+      const conversation = await response.json();
+      toast.success("Conversation created successfully");
+      router.push(`/dashboard/conversations/${conversation.id}`);
+    } catch (error) {
+      console.error("Error creating conversation:", error);
+      toast.error("Failed to create conversation");
+    }
+  };
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -28,20 +80,17 @@ export default function ConversationsPage() {
           throw new Error("Failed to fetch users");
         }
         const data: User[] = await response.json();
-        setUsers(data);
+        const filteredUsers = data.filter((u) => u.id !== user?.id);
+        setUsers(filteredUsers);
 
-        const nodes = data.map((user) => ({
+        const nodes: NodeData[] = filteredUsers.map((user) => ({
           id: user.id,
           name: user.username,
           color: user.is_online ? "#4CAF50" : "#9E9E9E",
           val: 1,
         }));
-        const links: {
-          source: string;
-          target: string;
-          value: number;
-          type?: string;
-        }[] = [];
+
+        const links: LinkData[] = [];
         nodes.forEach((node, index) => {
           const numConnections = Math.floor(Math.random() * 3) + 1;
           for (let i = 0; i < numConnections; i++) {
@@ -67,9 +116,8 @@ export default function ConversationsPage() {
     const intervalId = setInterval(fetchUsers, 30000);
 
     return () => clearInterval(intervalId);
-  }, []);
+  }, [user?.id]);
 
-  // Handle window resize
   useEffect(() => {
     const handleResize = () => {
       if (graphRef.current) {
@@ -79,11 +127,12 @@ export default function ConversationsPage() {
     };
 
     window.addEventListener("resize", handleResize);
+    handleResize();
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   return (
-    <>
+    <div style={{ width: "100%", height: "100vh" }}>
       {graphData.nodes.length > 0 && (
         <ForceGraph2D
           ref={graphRef}
@@ -94,16 +143,21 @@ export default function ConversationsPage() {
           linkWidth={1}
           linkColor={() => "#E0E0E0"}
           cooldownTime={3000}
+          width={window.innerWidth}
+          height={window.innerHeight}
           onEngineStop={() => {
             if (graphRef.current) {
               graphRef.current.zoomToFit(400);
             }
           }}
           onNodeClick={(node) => {
-            console.log("Selected user:", node);
+            const clickedNode = node as NodeData;
+            if (clickedNode.id !== user?.id) {
+              createConversation(clickedNode.id);
+            }
           }}
         />
       )}
-    </>
+    </div>
   );
 }

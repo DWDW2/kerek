@@ -17,7 +17,12 @@ export default function ConversationsPage() {
     const fetchUsers = async () => {
       try {
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/users`
+          `${process.env.NEXT_PUBLIC_API_URL}/users`,
+          {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+            },
+          }
         );
         if (!response.ok) {
           throw new Error("Failed to fetch users");
@@ -78,48 +83,27 @@ export default function ConversationsPage() {
   }, []);
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] w-full">
-      <div className="w-80 flex-shrink-0">
-        <UserSearch />
-        <div className="p-4">
-          <h2 className="text-lg font-semibold mb-2">User Network</h2>
-          <p className="text-sm text-gray-600 mb-4">
-            Green nodes are online users, gray nodes are offline.
-          </p>
-          <div className="text-sm">
-            <p>Total users: {users.length}</p>
-            <p>Online: {users.filter((user) => user.is_online).length}</p>
-          </div>
-        </div>
-      </div>
-      <div className="flex-1 flex flex-col">
-        <div className="flex-1 border-b">
-          {graphData.nodes.length > 0 && (
-            <ForceGraph2D
-              ref={graphRef}
-              graphData={graphData}
-              nodeLabel="name"
-              nodeColor="color"
-              nodeRelSize={6}
-              linkWidth={1}
-              linkColor={() => "#E0E0E0"}
-              cooldownTime={3000}
-              onEngineStop={() => {
-                if (graphRef.current) {
-                  graphRef.current.zoomToFit(400);
-                }
-              }}
-              onNodeClick={(node) => {
-                // You could implement user selection here
-                console.log("Selected user:", node);
-              }}
-            />
-          )}
-        </div>
-        <div className="h-1/3 overflow-y-auto">
-          <ConversationList />
-        </div>
-      </div>
-    </div>
+    <>
+      {graphData.nodes.length > 0 && (
+        <ForceGraph2D
+          ref={graphRef}
+          graphData={graphData}
+          nodeLabel="name"
+          nodeColor="color"
+          nodeRelSize={6}
+          linkWidth={1}
+          linkColor={() => "#E0E0E0"}
+          cooldownTime={3000}
+          onEngineStop={() => {
+            if (graphRef.current) {
+              graphRef.current.zoomToFit(400);
+            }
+          }}
+          onNodeClick={(node) => {
+            console.log("Selected user:", node);
+          }}
+        />
+      )}
+    </>
   );
 }

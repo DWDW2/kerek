@@ -88,7 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem("auth_token", data.token);
       setToken(data.token);
       setUser(data.user);
-      router.push("/conversations");
+      router.push("/dashboard");
     } catch (error) {
       console.error("Login error:", error);
       throw error;
@@ -120,7 +120,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem("auth_token", data.token);
       setToken(data.token);
       setUser(data.user);
-      router.push("/conversations");
+      router.push("/dashboard");
     } catch (error) {
       console.error("Registration error:", error);
       throw error;

@@ -37,8 +37,8 @@ const navigationData = {
       icon: MessageSquare,
     },
     {
-      title: "Analytics",
-      href: "/dashboard/analytics",
+      title: "Dashboard",
+      href: "/dashboard/",
       icon: BarChart2,
     },
     {

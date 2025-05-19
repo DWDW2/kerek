@@ -54,7 +54,7 @@ async fn main() -> std::io::Result<()> {
             .max_age(3600);
 
         App::new()
-            .wrap(Logger::new("%a %t '%r' %s %b '%{Referer}i' '%{User-Agent}i' %D"))
+            .wrap(Logger::new("%a %t '%r' %s %b '%{Referer}i' %D"))
             .wrap(cors)
             .app_data(session_data.clone())
             .app_data(web::Data::new(room_store.clone()))

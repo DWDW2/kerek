@@ -122,7 +122,7 @@ export default function ConversationsPage() {
     const handleResize = () => {
       if (graphRef.current) {
         graphRef.current.centerAt();
-        graphRef.current.zoom(1.5);
+        graphRef.current.zoom(1);
       }
     };
 
@@ -132,32 +132,27 @@ export default function ConversationsPage() {
   }, []);
 
   return (
-    <div style={{ width: "100%", height: "100vh" }}>
-      {graphData.nodes.length > 0 && (
-        <ForceGraph2D
-          ref={graphRef}
-          graphData={graphData}
-          nodeLabel="name"
-          nodeColor="color"
-          nodeRelSize={6}
-          linkWidth={1}
-          linkColor={() => "#E0E0E0"}
-          cooldownTime={3000}
-          width={window.innerWidth}
-          height={window.innerHeight}
-          onEngineStop={() => {
-            if (graphRef.current) {
-              graphRef.current.zoomToFit(400);
-            }
-          }}
-          onNodeClick={(node) => {
-            const clickedNode = node as NodeData;
-            if (clickedNode.id !== user?.id) {
-              createConversation(clickedNode.id);
-            }
-          }}
-        />
-      )}
+    <div className="p-4 h-full flex flex-col">
+      <div className="font-bold text-xl">Explore Neighborhood</div>
+      <div style={{ maxWidth: "none", overflow: "hidden" }}>
+        {graphData.nodes.length > 0 && (
+          <ForceGraph2D
+            graphData={graphData}
+            nodeLabel="name"
+            nodeColor="color"
+            nodeRelSize={6}
+            linkWidth={1}
+            linkColor={() => "#E0E0E0"}
+            cooldownTime={3000}
+            onNodeClick={(node) => {
+              const clickedNode = node as NodeData;
+              if (clickedNode.id !== user?.id) {
+                createConversation(clickedNode.id);
+              }
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 }

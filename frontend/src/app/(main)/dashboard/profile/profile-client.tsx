@@ -65,10 +65,7 @@ export function ProfileClient({ getProfileData }: ProfileClientProps) {
     <div className="p-6 space-y-6">
       <div className="flex items-center gap-6">
         <Avatar className="h-24 w-24">
-          <AvatarImage
-            src={user.image || undefined}
-            alt={user.username || "User"}
-          />
+          <AvatarImage src={""} alt={user.username || "User"} />
           <AvatarFallback>
             {user.username?.[0]?.toUpperCase() || "U"}
           </AvatarFallback>

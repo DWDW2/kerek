@@ -24,6 +24,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import Image from "next/image";
+import { cn } from "@/lib/utils"; // Assuming you have a utility for classnames
+
 const navigationData = {
   mainNav: [
     {
@@ -69,6 +71,7 @@ const navigationData = {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
   const { user } = useAuth();
+
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
@@ -85,7 +88,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
-      <SidebarContent className="px-4 ">
+
+      <SidebarContent className="px-3 py-4">
         <SidebarMenu>
           {navigationData.mainNav.map((item) => {
             const Icon = item.icon;
@@ -96,9 +100,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <SidebarMenuButton asChild>
                   <Link
                     href={item.href}
-                    className="flex items-center gap-2 font-mono"
+                    className={cn(
+                      "flex items-center gap-2 font-medium text-sm transition-colors hover:text-foreground",
+                      isActive
+                        ? "text-foreground font-semibold"
+                        : "text-muted-foreground"
+                    )}
                   >
-                    <Icon className="h-5 w-5" />
+                    <Icon className="h-4 w-4" />
                     <span>{item.title}</span>
                   </Link>
                 </SidebarMenuButton>
@@ -107,7 +116,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           })}
         </SidebarMenu>
 
-        <SidebarMenu className="mt-auto">
+        <SidebarMenu className="mt-6">
           {navigationData.secondaryNav.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
@@ -115,8 +124,16 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             return (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton asChild>
-                  <Link href={item.href} className="flex items-center gap-2">
-                    <Icon className="h-5 w-5" />
+                  <Link
+                    href={item.href}
+                    className={cn(
+                      "flex items-center gap-2 text-sm transition-colors hover:text-foreground",
+                      isActive
+                        ? "text-foreground font-semibold"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    <Icon className="h-4 w-4" />
                     <span>{item.title}</span>
                   </Link>
                 </SidebarMenuButton>
@@ -125,7 +142,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           })}
         </SidebarMenu>
       </SidebarContent>
-      <SidebarFooter className="py-4">
+
+      <SidebarFooter className="py-3 px-3">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
@@ -136,11 +154,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <Image
                   src={"/avatar.png"}
                   alt={user?.username || "User"}
-                  className="h-8 w-8 rounded-full"
-                  width={32}
-                  height={32}
+                  className="h-7 w-7 rounded-full"
+                  width={28}
+                  height={28}
                 />
-                <div className="flex flex-col">
+                <div className="flex flex-col ">
                   <span className="text-sm font-medium">{user?.username}</span>
                   <span className="text-xs text-muted-foreground">
                     {user?.email}

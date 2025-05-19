@@ -1,13 +1,15 @@
 use actix_web::web;
 use scylla::client::session::Session;
-use futures_util::stream::TryStreamExt;
-
 use actix_web::http::StatusCode;
 use scylla::value::CqlTimestamp;
 use uuid::Uuid;
-use scylla::statement::unprepared::Statement;
 use chrono::Utc;
-use crate::{error::AppError, models::user::{NewUser, User, UserProfile}};
+use std::marker::PhantomData;
+use crate::{
+    error::AppError, 
+    models::user::{NewUser, User, UserProfile},
+    utils::db_client::DbClient
+};
 
 pub async fn create(session: &web::Data<Session>, new_user: NewUser) -> Result<User, AppError> {
     let id = Uuid::new_v4();
@@ -15,11 +17,15 @@ pub async fn create(session: &web::Data<Session>, new_user: NewUser) -> Result<U
     let password_hash = bcrypt::hash(&new_user.password, bcrypt::DEFAULT_COST)
         .map_err(|e| AppError(format!("Password hashing error: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?;
 
-    let statement = Statement::new("INSERT INTO users (id, username, email, password_hash, created_at, updated_at, last_seen_at, is_online) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-    session.query_unpaged(
-        statement,
+    let db_client = DbClient::<User> { 
+        session, 
+        _phantom: PhantomData 
+    };
+
+    db_client.insert(
+        "INSERT INTO users (id, username, email, password_hash, created_at, updated_at, last_seen_at, is_online) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         (&id, &new_user.username, &new_user.email, &password_hash, CqlTimestamp(now), CqlTimestamp(now), None::<CqlTimestamp>, false)
-    ).await.map_err(|e| AppError(format!("Failed to create user: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?;
+    ).await?;
     
     Ok(User {
         id: id.to_string(),
@@ -34,64 +40,60 @@ pub async fn create(session: &web::Data<Session>, new_user: NewUser) -> Result<U
 }
 
 pub async fn find_by_email(session: &web::Data<Session>, email: &str) -> Result<Option<User>, AppError> {
-    let mut iter = session.query_iter(
-        "SELECT id, username, email, password_hash, created_at, updated_at, last_seen_at, is_online FROM users WHERE email = ?",
-        (email,),
-    ).await.map_err(|e| AppError(format!("Failed to prepare query: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?
-        .rows_stream::<(Uuid, String, String, String, CqlTimestamp, CqlTimestamp, Option<CqlTimestamp>, bool)>()
-        .map_err(|e| AppError(format!("Failed to get rows stream: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?;
+    let db_client = DbClient::<User> { 
+        session, 
+        _phantom: PhantomData 
+    };
 
-    match iter.try_next().await {
-        Ok(Some(row)) => {
-            let (id, username, email, password_hash, created_at, updated_at, last_seen_at, is_online) = row;
-            Ok(Some(User {
-                id: id.to_string(),
-                username,
-                email,
-                password_hash,
-                created_at: created_at.0,
-                updated_at: updated_at.0,
-                last_seen_at: last_seen_at.map(|ts| ts.0),
-                is_online,
-            }))
-        }
-        Ok(None) => Ok(None),
-        Err(e) => Err(AppError(format!("Failed to find user by email: {}", e), StatusCode::INTERNAL_SERVER_ERROR)),
+    let results = db_client.query::<(Uuid, String, String, String, CqlTimestamp, CqlTimestamp, Option<CqlTimestamp>, bool), _>(
+        "SELECT id, username, email, password_hash, created_at, updated_at, last_seen_at, is_online FROM users WHERE email = ?",
+        Some((email,))
+    ).await?;
+
+    if let Some(row) = results.first() {
+        let (id, username, email, password_hash, created_at, updated_at, last_seen_at, is_online) = row.clone();
+        Ok(Some(User {
+            id: id.to_string(),
+            username,
+            email,
+            password_hash,
+            created_at: created_at.0,
+            updated_at: updated_at.0,
+            last_seen_at: last_seen_at.map(|ts| ts.0),
+            is_online,
+        }))
+    } else {
+        Ok(None)
     }
 }
 
 pub async fn find_by_id(session: &web::Data<Session>, id: &str) -> Result<Option<User>, AppError> {
     let uuid = Uuid::parse_str(id).map_err(|e| AppError(format!("Invalid UUID format: {}", e), StatusCode::BAD_REQUEST))?;
-    let smnt = Statement::new("SELECT id, username, email, password_hash, created_at, updated_at, last_seen_at, is_online FROM users WHERE id = ?");
-    let mut iter = session.query_iter(
-        smnt,
-        (uuid,),
-    ).await.map_err(|e| {
-        log::info!("Database query error: {:?}", e);
-        AppError(format!("Failed to prepare query: {}", e), StatusCode::INTERNAL_SERVER_ERROR)
-    })?
-        .rows_stream::<(Uuid, String, String, String, CqlTimestamp, CqlTimestamp, Option<CqlTimestamp>, bool)>()
-        .map_err(|e| {
-            log::info!("Stream error: {:?}", e);
-            AppError(format!("Failed to get rows stream: {}", e), StatusCode::INTERNAL_SERVER_ERROR)
-        })?;
+    
+    let db_client = DbClient::<User> { 
+        session, 
+        _phantom: PhantomData 
+    };
 
-    match iter.try_next().await {
-        Ok(Some(row)) => {
-            let (id, username, email, password_hash, created_at, updated_at, last_seen_at, is_online) = row;
-            Ok(Some(User {
-                id: id.to_string(),
-                username,
-                email,
-                password_hash,
-                created_at: created_at.0,
-                updated_at: updated_at.0,
-                last_seen_at: last_seen_at.map(|ts| ts.0),
-                is_online,
-            }))
-        }
-        Ok(None) => Ok(None),
-        Err(e) => Err(AppError(format!("Failed to find user by id: {}", e), StatusCode::INTERNAL_SERVER_ERROR)),
+    let results = db_client.query::<(Uuid, String, String, String, CqlTimestamp, CqlTimestamp, Option<CqlTimestamp>, bool), _>(
+        "SELECT id, username, email, password_hash, created_at, updated_at, last_seen_at, is_online FROM users WHERE id = ?",
+        Some((uuid,))
+    ).await?;
+
+    if let Some(row) = results.first() {
+        let (id, username, email, password_hash, created_at, updated_at, last_seen_at, is_online) = row.clone();
+        Ok(Some(User {
+            id: id.to_string(),
+            username,
+            email,
+            password_hash,
+            created_at: created_at.0,
+            updated_at: updated_at.0,
+            last_seen_at: last_seen_at.map(|ts| ts.0),
+            is_online,
+        }))
+    } else {
+        Ok(None)
     }
 }
 
@@ -101,10 +103,15 @@ pub async fn update_user(session: &web::Data<Session>, id: &str, updated_user: N
     let password_hash = bcrypt::hash(&updated_user.password, bcrypt::DEFAULT_COST)
         .map_err(|e| AppError(format!("Password hashing error: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?;
 
-    session.query_unpaged(
+    let db_client = DbClient::<User> { 
+        session, 
+        _phantom: PhantomData 
+    };
+
+    db_client.insert(
         "UPDATE users SET username = ?, email = ?, password_hash = ?, updated_at = ? WHERE id = ?",
-        (&updated_user.username, &updated_user.email, &password_hash, CqlTimestamp(now), uuid),
-    ).await.map_err(|e| AppError(format!("Failed to update user: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?;
+        (&updated_user.username, &updated_user.email, &password_hash, CqlTimestamp(now), uuid)
+    ).await?;
 
     match find_by_id(session, id).await? {
         Some(user) => Ok(user),
@@ -116,118 +123,87 @@ pub async fn update_user_status(session: &web::Data<Session>, id: &str, is_onlin
     let uuid = Uuid::parse_str(id).map_err(|e| AppError(format!("Invalid UUID format: {}", e), StatusCode::BAD_REQUEST))?;
     let now = Utc::now().timestamp();
 
-    session.query_unpaged(
-        "UPDATE users SET is_online = ?, last_seen_at = ? WHERE id = ?",
-        (is_online, CqlTimestamp(now), uuid),
-    ).await.map_err(|e| AppError(format!("Failed to update user status: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?;
+    let db_client = DbClient::<User> { 
+        session, 
+        _phantom: PhantomData 
+    };
 
-    Ok(())
+    db_client.insert(
+        "UPDATE users SET is_online = ?, last_seen_at = ? WHERE id = ?",
+        (is_online, CqlTimestamp(now), uuid)
+    ).await
 }
 
 pub async fn delete_user(session: &web::Data<Session>, id: &str) -> Result<(), AppError> {
     let uuid = Uuid::parse_str(id).map_err(|e| AppError(format!("Invalid UUID format: {}", e), StatusCode::BAD_REQUEST))?;
 
-    session.query_unpaged(
-        "DELETE FROM users WHERE id = ?",
-        (uuid,),
-    ).await.map_err(|e| AppError(format!("Failed to delete user: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?;
+    let db_client = DbClient::<User> { 
+        session, 
+        _phantom: PhantomData 
+    };
 
-    Ok(())
+    db_client.insert(
+        "DELETE FROM users WHERE id = ?",
+        (uuid,)
+    ).await
 }
 
 pub async fn search_users(
     session: &web::Data<Session>,
     query: &str,
 ) -> Result<Vec<UserProfile>, AppError> {
-    let mut iter = session
-        .query_iter(
-            "SELECT id, username, email, created_at, last_seen_at, is_online FROM users",
-            (),
-        )
-        .await
-        .map_err(|e| {
-            AppError(
-                format!("Failed to prepare search query: {}", e),
-                StatusCode::INTERNAL_SERVER_ERROR,
-            )
-        })?
-        .rows_stream::<(Uuid, String, String, CqlTimestamp, Option<CqlTimestamp>, bool)>()
-        .map_err(|e| {
-            AppError(
-                format!("Failed to get rows stream: {}", e),
-                StatusCode::INTERNAL_SERVER_ERROR,
-            )
-        })?;
+    let db_client = DbClient::<UserProfile> { 
+        session, 
+        _phantom: PhantomData 
+    };
 
-    let mut users = Vec::new();
-    while let Some(row) = iter
-        .try_next()
-        .await
-        .map_err(|e| {
-            AppError(
-                format!("Failed to process search results: {}", e),
-                StatusCode::INTERNAL_SERVER_ERROR,
-            )
-        })?
-    {
-        let (id, username, email, created_at, last_seen_at, is_online) = row;
-        if username.contains(query) || email.contains(query) {
-            users.push(UserProfile {
+    let results = db_client.query::<(Uuid, String, String, CqlTimestamp, Option<CqlTimestamp>, bool), _>(
+        "SELECT id, username, email, created_at, last_seen_at, is_online FROM users",
+        None::<()>
+    ).await?;
+
+    let users = results
+        .into_iter()
+        .filter(|(_, username, email, _, _, _)| username.contains(query) || email.contains(query))
+        .map(|(id, username, email, created_at, last_seen_at, is_online)| {
+            UserProfile {
                 id: id.to_string(),
                 username,
                 email,
                 created_at: created_at.0,
                 last_seen_at: last_seen_at.map(|ts| ts.0),
                 is_online,
-            });
-        }
-    }
+            }
+        })
+        .collect();
 
     Ok(users)
 }
 
 pub async fn get_all_users(session: &web::Data<Session>) -> Result<Vec<UserProfile>, AppError> {
-    let mut iter = session
-        .query_iter(
-            "SELECT id, username, email, created_at, last_seen_at, is_online FROM users",
-            (),
-        )
-        .await
-        .map_err(|e| {
-            AppError(
-                format!("Failed to prepare query: {}", e),
-                StatusCode::INTERNAL_SERVER_ERROR,
-            )
-        })?
-        .rows_stream::<(Uuid, String, String, CqlTimestamp, Option<CqlTimestamp>, bool)>()
-        .map_err(|e| {
-            AppError(
-                format!("Failed to get rows stream: {}", e),
-                StatusCode::INTERNAL_SERVER_ERROR,
-            )
-        })?;
+    let db_client = DbClient::<UserProfile> { 
+        session, 
+        _phantom: PhantomData 
+    };
 
-    let mut users = Vec::new();
-    while let Some(row) = iter
-        .try_next()
-        .await
-        .map_err(|e| {
-            AppError(
-                format!("Failed to process users: {}", e),
-                StatusCode::INTERNAL_SERVER_ERROR,
-            )
-        })?
-    {
-        let (id, username, email, created_at, last_seen_at, is_online) = row;
-        users.push(UserProfile {
-            id: id.to_string(),
-            username,
-            email,
-            created_at: created_at.0,
-            last_seen_at: last_seen_at.map(|ts| ts.0),
-            is_online,
-        });
-    }
+    let results = db_client.query::<(Uuid, String, String, CqlTimestamp, Option<CqlTimestamp>, bool), _>(
+        "SELECT id, username, email, created_at, last_seen_at, is_online FROM users",
+        None::<()>
+    ).await?;
+
+    let users = results
+        .into_iter()
+        .map(|(id, username, email, created_at, last_seen_at, is_online)| {
+            UserProfile {
+                id: id.to_string(),
+                username,
+                email,
+                created_at: created_at.0,
+                last_seen_at: last_seen_at.map(|ts| ts.0),
+                is_online,
+            }
+        })
+        .collect();
 
     Ok(users)
 }

@@ -41,7 +41,7 @@ pub struct UpdateProfileRequest {
     pub password: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct UserProfile {
     pub id: String,
     pub username: String,

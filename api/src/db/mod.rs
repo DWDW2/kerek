@@ -4,8 +4,25 @@ use scylla::errors::{ExecutionError, NewSessionError};
 use futures_util::stream::TryStreamExt;
 
 pub async fn connect() -> Result<Session, NewSessionError> {
-    let session = SessionBuilder::new().known_node("0.0.0.0:9042").build().await?;
-    Ok(session)
+    let host = std::env::var("CASSANDRA_HOST").unwrap_or_else(|_| "127.0.0.1:9042".to_string());
+    let max_retries = 5;
+    let mut retry_count = 0;
+    let mut last_error = None;
+
+    loop {
+        match SessionBuilder::new().known_node(host.clone()).build().await {
+            Ok(session) => return Ok(session),
+            Err(e) => {
+                last_error = Some(e);
+                retry_count += 1;
+                if retry_count >= max_retries {
+                    eprintln!("Failed to connect to Cassandra after {} attempts. Last error: {:?}", max_retries, last_error);
+                    retry_count = 0;
+                }
+                tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+            }
+        }
+    }
 }
 
 pub async fn setup_database(session: &web::Data<Session>, new: bool) -> Result<(), ExecutionError> {

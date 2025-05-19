@@ -16,8 +16,8 @@ use crate::error::AppError;
 use crate::conversations::service as conversation_service;
 
 pub struct RoomState {
-    pub senders: HashMap<String, Vec<mpsc::UnboundedSender<String>>>, // user_id -> senders
-    pub pending_messages: HashMap<String, VecDeque<String>>,     // user_id -> pending
+    pub senders: HashMap<String, Vec<mpsc::UnboundedSender<String>>>,
+    pub pending_messages: HashMap<String, VecDeque<String>>,     
 }
 
 pub type RoomStore = Arc<RwLock<HashMap<String, RoomState>>>;

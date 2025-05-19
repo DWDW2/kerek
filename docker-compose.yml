@@ -1,0 +1,42 @@
+version: "3.8"
+
+services:
+  backend:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: rust-backend
+    ports:
+      - "8080:8080"
+    depends_on:
+      - cassandra
+    environment:
+      - HOST=0.0.0.0
+      - PORT=8080
+      - JWT_SECRET=helloworld
+      - CASSANDRA_HOST=cassandra-db:9042
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: nextjs-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+  cassandra:
+    image: cassandra:4.1
+    container_name: cassandra-db
+    ports:
+      - "9042:9042"
+    volumes:
+      - cassandra-data:/var/lib/cassandra
+    environment:
+      - CASSANDRA_CLUSTER_NAME=MyCluster
+      - CASSANDRA_DC=DC1
+      - CASSANDRA_RACK=Rack1
+
+volumes:
+  cassandra-data:

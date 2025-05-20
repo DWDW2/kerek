@@ -3,11 +3,12 @@ import React from "react";
 import { AnimatedButton } from "./animated-button";
 import { Button } from "./ui/button";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 export default function HeroSection() {
   const router = useRouter();
   return (
     <div
-      className="min-h-[80vh] md:min-h-screen animate-section  rounded-lg md:rounded-3xl mb-4 mt-20 md:mb-10 flex flex-col items-center p-6 md:p-14 md:pt-32 pt-28 gap-3 md:gap-4 bg-cover bg-center w-[88vw] mx-auto"
+      className="min-h-[80vh] md:min-h-screen animate-section rounded-lg md:rounded-3xl mb-4 mt-20 md:mb-10 flex flex-col items-center p-6 md:p-14 md:pt-32 pt-28 gap-3 md:gap-4 bg-cover bg-center w-[88vw] mx-auto relative overflow-clip" // Added overflow-clip to ensure content outside bounds is hidden
       style={{
         backgroundImage: "url(/hero-section.png)",
       }}
@@ -33,6 +34,14 @@ export default function HeroSection() {
           Learn More
         </Button>
       </section>
+
+      <Image
+        src={"/hero-image.png"}
+        width={1000}
+        height={600}
+        className="rounded object-cover object-top absolute -bottom-[150px] overflow-clip w-[80%] hidden md:block "
+        alt="hero-image"
+      />
     </div>
   );
 }

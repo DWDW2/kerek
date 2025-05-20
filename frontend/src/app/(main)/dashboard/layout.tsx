@@ -7,7 +7,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <SidebarProvider>
       <AppSidebar />
       <div className="flex flex-col flex-1">
-        <header className="flex flex-row w-full p-4 bg-white items-center gap-2 shadow">
+        <header className="flex flex-row w-full p-4 items-center gap-2 shadow">
           <SidebarTrigger />
           <DashboardBreadcrumbs />
         </header>

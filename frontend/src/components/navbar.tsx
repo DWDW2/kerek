@@ -50,7 +50,7 @@ export default function Navbar() {
 
   return (
     <motion.div
-      className="flex border flex-row w-[75vw] justify-between items-center bg-white fixed top-3 left-0 right-0 mx-auto px-10 py-2 rounded-3xl z-50 shadow-xl"
+      className="flex border flex-row w-[85vw] sm:w-[75vw] justify-between items-center bg-white fixed top-3 left-0 right-0 mx-auto px-10 py-2 rounded-3xl z-50 shadow-xl"
       initial="visible"
       animate={isVisible ? "visible" : "hidden"}
       variants={navVariants}
@@ -58,7 +58,7 @@ export default function Navbar() {
       <h1 className="text-2xl font-bold text-gray-800 tracking-tighter">
         Kerek
       </h1>
-      <div className="flex flex-row gap-6 font-medium font-mono items-center">
+      <div className="flex-row gap-6 font-medium font-mono items-center hidden sm:flex">
         {navItems.map((item) => (
           <Link
             href={item.href}

@@ -35,7 +35,7 @@ export default function ConversationsPage() {
   const router = useRouter();
   const graphRef = useRef<ForceGraphMethods | null>(null);
 
-  const createConversation = async (targetUserId: string) => {
+  const createConversation = async (targetUser: NodeData) => {
     try {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/conversations`,
@@ -46,8 +46,19 @@ export default function ConversationsPage() {
             Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
           },
           body: JSON.stringify({
-            participant_ids: [user?.id, targetUserId],
+            participant_ids: [user?.id, targetUser.id],
             is_group: false,
+            name: `${
+              user?.username +
+              `'s` +
+              " " +
+              "and" +
+              " " +
+              targetUser.name +
+              `'s` +
+              " " +
+              "conversation"
+            }`,
           }),
         }
       );
@@ -147,7 +158,7 @@ export default function ConversationsPage() {
             onNodeClick={(node) => {
               const clickedNode = node as NodeData;
               if (clickedNode.id !== user?.id) {
-                createConversation(clickedNode.id);
+                createConversation(clickedNode);
               }
             }}
           />

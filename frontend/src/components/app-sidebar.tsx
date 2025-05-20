@@ -60,11 +60,6 @@ const navigationData = {
       href: "/dashboard/help",
       icon: HelpCircle,
     },
-    {
-      title: "Search",
-      href: "/dashboard/search",
-      icon: Search,
-    },
   ],
 };
 
@@ -89,7 +84,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarHeader>
 
-      <SidebarContent className="px-3 py-4">
+      <SidebarContent className="px-3 py-4 ">
         <SidebarMenu>
           {navigationData.mainNav.map((item) => {
             const Icon = item.icon;

@@ -2,14 +2,17 @@ import Navbar from "@/components/navbar";
 import HeroSection from "@/components/hero-section";
 import Features from "@/components/features";
 import Animation from "@/components/animation";
+import RevealOnScroll from "@/components/animations/reveal-on-scroll";
 export default async function Home() {
   return (
     <>
-      <Animation>
-        <Navbar />
+      <Navbar />
+      <RevealOnScroll>
         <HeroSection />
+      </RevealOnScroll>
+      <RevealOnScroll>
         <Features />
-      </Animation>
+      </RevealOnScroll>
     </>
   );
 }

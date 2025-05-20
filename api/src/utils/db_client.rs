@@ -8,6 +8,11 @@ use crate::error::AppError;
 use futures_util::stream::TryStreamExt;
 
 
+
+
+
+
+// Further implement this service because I think there will some bugs related to this
 pub struct DbClient<'a, T> {
     pub session: &'a web::Data<Session>,
     pub _phantom: PhantomData<T>,

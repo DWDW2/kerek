@@ -2,17 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
-import { SendHorizontal } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/lib/auth-context";
-import { cn } from "@/lib/utils";
 import { useMessages } from "@/hooks/use-messages";
 import { Message } from "@/types/conversation";
 import { useConversation } from "@/hooks/use-conversation";
+import ConversationHeader from "./conversation-header";
+import MessageList from "./message-list";
+import MessageInput from "./message-input";
 import { useUser } from "@/hooks/use-user";
 
 export function ConversationDetail() {
@@ -23,7 +21,7 @@ export function ConversationDetail() {
   const [wsError, setWsError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
-  const { user } = useAuth();
+
   const {
     messages,
     isLoading: isLoadingMessages,
@@ -33,13 +31,14 @@ export function ConversationDetail() {
     setMessages,
     mergeMessages,
   } = useMessages(conversationId as string);
+
   const { conversation, isLoading: isLoadingConversation } = useConversation(
     conversationId as string
   );
-  const { user: reciever } = useUser({
-    id: conversation?.participant_ids.find((p) => p !== user?.id) || "",
-  });
-
+  const { user } = useAuth();
+  const { user: reciever, isLoading: isLoadingReciever } = useUser(
+    conversation?.participant_ids.find((id) => id !== user?.id) || ""
+  );
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -149,7 +148,8 @@ export function ConversationDetail() {
     }
   };
 
-  const isLoading = isLoadingConversation || isLoadingMessages;
+  const isLoading =
+    isLoadingConversation || isLoadingMessages || isLoadingReciever;
 
   if (isLoading) {
     return (
@@ -181,93 +181,30 @@ export function ConversationDetail() {
   }
 
   return (
-    <Card className="h-full flex flex-col border-none shadow-none rounded-none">
-      <CardHeader className="border-b px-6 py-4">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold">
-            Chat with {reciever?.username}
-          </CardTitle>
-          {/* <Badge
-            variant={isConnected ? "default" : "destructive"}
-            className={cn(
-              "transition-colors",
-              isConnected ? "bg-green-500" : "bg-red-500"
-            )}
-          >
-            {isConnected ? "Connected" : "Disconnected"}
-          </Badge> */}
-        </div>
+    <Card className="h-full flex flex-col border-none shadow-none rounded-none p-0">
+      <CardHeader className="border-b px-6 py-6 bg-gradient-to-r from-primary/10 to-secondary/10">
+        <ConversationHeader reciever={reciever!} />
       </CardHeader>
       <CardContent className="flex-1 flex flex-col p-0">
-        <ScrollArea ref={scrollRef} className="flex-1 px-6">
-          <div className="flex flex-col space-y-4 py-4">
-            {hasMore && (
-              <div className="flex justify-center">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={loadOlderMessages}
-                  disabled={isLoadingMore}
-                  className="bg-background/50 backdrop-blur-sm"
-                >
-                  {isLoadingMore ? "Loading..." : "Load older messages"}
-                </Button>
-              </div>
-            )}
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={cn(
-                  "flex w-full",
-                  message.sender_id === user?.id
-                    ? "justify-end"
-                    : "justify-start"
-                )}
-              >
-                <div
-                  className={cn(
-                    "max-w-[70%] rounded-2xl px-4 py-2.5",
-                    message.sender_id === user?.id
-                      ? "bg-primary text-primary-foreground rounded-tr-none"
-                      : "bg-muted rounded-tl-none"
-                  )}
-                >
-                  <p className="text-sm leading-relaxed">{message.content}</p>
-                  <p className="text-xs mt-1 opacity-70 text-right">
-                    {new Date(message.created_at).toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </ScrollArea>
-        <div className="border-t p-4">
-          <form onSubmit={handleSendMessage} className="flex space-x-2">
-            <Input
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              placeholder={
-                isConnected
-                  ? "Type a message..."
-                  : wsError
-                  ? "Connection error. Please try again."
-                  : "Connecting..."
-              }
-              disabled={!isConnected || isSending}
-              className="flex-1"
-            />
-            <Button
-              type="submit"
-              size="icon"
-              disabled={!isConnected || isSending}
-              className="shrink-0"
-            >
-              <SendHorizontal className="h-4 w-4" />
-            </Button>
-          </form>
+        <MessageList
+          messages={messages}
+          hasMore={hasMore}
+          isLoadingMore={isLoadingMore}
+          loadOlderMessages={loadOlderMessages}
+          scrollRef={scrollRef as React.RefObject<HTMLDivElement>}
+        />
+        <div className="border-t p-5 bg-gradient-to-r from-background to-muted/30">
+          <MessageInput
+            isConnected={isConnected}
+            isSending={isSending}
+            wsError={wsError}
+            newMessage={newMessage}
+            setNewMessage={setNewMessage}
+            onSendMessage={handleSendMessage}
+          />
+          {wsError && (
+            <p className="text-sm text-red-500 mt-2 text-center">{wsError}</p>
+          )}
         </div>
       </CardContent>
     </Card>

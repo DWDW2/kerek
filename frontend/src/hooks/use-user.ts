@@ -7,7 +7,7 @@ interface UseUserResult {
   error: string | null;
 }
 
-export function useUser({ id }: { id: string }): UseUserResult {
+export function useUser(id: string): UseUserResult {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

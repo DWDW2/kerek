@@ -10,8 +10,9 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import React from "react";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 
-export function DashboardBreadcrumbs() {
+function DashboardBreadcrumbs() {
   const pathname = usePathname();
   const segments = pathname.split("/").filter(Boolean);
 
@@ -38,5 +39,21 @@ export function DashboardBreadcrumbs() {
         })}
       </BreadcrumbList>
     </Breadcrumb>
+  );
+}
+export function Header() {
+  const pathname = usePathname();
+  const isConversationDetail =
+    pathname.includes("/conversations/") && pathname.split("/").length > 3;
+
+  if (isConversationDetail) {
+    return;
+  }
+
+  return (
+    <header className="flex flex-row w-full p-4 items-center gap-2 shadow">
+      <SidebarTrigger />
+      <DashboardBreadcrumbs />
+    </header>
   );
 }

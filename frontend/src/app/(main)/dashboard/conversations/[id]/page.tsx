@@ -12,7 +12,7 @@ export default async function ConversationPage({
   params,
 }: ConversationPageProps) {
   return (
-    <div className="flex h-[calc(100vh-4rem)] w-full">
+    <div className="flex h-full w-full">
       <div className="flex-1 flex flex-col">
         <ConversationDetail />
       </div>

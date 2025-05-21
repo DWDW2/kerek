@@ -108,41 +108,57 @@ export function ConversationDetail() {
     }
   }, [messages.length]);
 
-  const sendMessage = async (content: string) => {
-    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-      throw new Error("WebSocket is not connected");
+  const sendContent = async (content: string) => {
+    if (!content.trim()) {
+      console.warn("Attempted to send empty content.");
+      return;
+    }
+    if (!isConnected) {
+      setWsError("Not connected. Please wait for connection to establish.");
+      return;
+    }
+    if (!user?.id || !conversationId) {
+      setWsError(
+        "User or conversation context is missing. Cannot send message."
+      );
+      console.error(
+        "sendContent: User ID or Conversation ID is missing.",
+        `User ID: ${user?.id}, Conversation ID: ${conversationId}`
+      );
+      return;
     }
 
-    const message = {
-      content,
-      conversationId: conversationId,
-      senderId: user?.id,
-    };
-
-    wsRef.current.send(JSON.stringify(message));
-
-    const tempMessage: Message = {
-      id: Date.now().toString(),
-      content: content,
-      sender_id: user?.id as string,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      conversation_id: conversationId as string,
-    };
-    setMessages((prev) => [...prev, tempMessage]);
-  };
-
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMessage.trim() || !isConnected) return;
-
     setIsSending(true);
+    setWsError(null);
+
     try {
-      await sendMessage(newMessage.trim());
-      setNewMessage("");
+      if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+        setWsError("WebSocket is not ready. Please try again or reconnect.");
+        throw new Error("WebSocket is not in OPEN state during send attempt.");
+      }
+
+      const messagePayload = {
+        content,
+        conversationId: conversationId,
+        senderId: user.id,
+      };
+
+      wsRef.current.send(JSON.stringify(messagePayload));
+
+      const tempMessage: Message = {
+        id: `temp_${Date.now().toString()}`,
+        content: content,
+        sender_id: user.id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        conversation_id: conversationId as string,
+      };
+      setMessages((prevMessages) => [...prevMessages, tempMessage]);
     } catch (error) {
-      console.error("Failed to send message:", error);
-      setWsError("Failed to send message");
+      console.error("Failed to send message via WebSocket:", error);
+      const specificError =
+        error instanceof Error ? error.message : "Failed to send message.";
+      setWsError(specificError);
     } finally {
       setIsSending(false);
     }
@@ -200,7 +216,7 @@ export function ConversationDetail() {
             wsError={wsError}
             newMessage={newMessage}
             setNewMessage={setNewMessage}
-            onSendMessage={handleSendMessage}
+            onSendContent={sendContent}
           />
           {wsError && (
             <p className="text-sm text-red-500 mt-2 text-center">{wsError}</p>

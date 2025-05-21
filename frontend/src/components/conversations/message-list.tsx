@@ -21,7 +21,7 @@ const MessageList: React.FC<MessageListProps> = ({
   scrollRef,
 }) => {
   return (
-    <ScrollArea ref={scrollRef} className="flex-1 px-6 ">
+    <ScrollArea ref={scrollRef} className="flex-1 px-6">
       <div className="flex flex-col space-y-6 py-6">
         {hasMore && (
           <div className="flex justify-center">

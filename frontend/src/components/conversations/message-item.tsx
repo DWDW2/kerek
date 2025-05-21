@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth-context";
 import JSConfetti from "js-confetti";
 import { useEffect, useRef } from "react";
 import { Message } from "@/types/conversation";
+import Image from "next/image";
 
 interface MessageItemProps {
   message: Message;
@@ -44,7 +45,28 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
     return singleEmojiRegex.test(content.trim());
   };
 
+  const isGifUrl = (content: string) => {
+    return (
+      content.startsWith("https://i.giphy.com/") && content.endsWith(".gif")
+    );
+  };
+
   const renderMessageContent = (content: string) => {
+    if (isGifUrl(content)) {
+      return (
+        <div className="relative w-48 h-48 md:w-64 md:h-64 overflow-hidden rounded-lg">
+          <Image
+            src={content}
+            alt="GIF"
+            layout="fill"
+            objectFit="contain"
+            unoptimized
+            className="rounded-lg"
+          />
+        </div>
+      );
+    }
+
     if (!containsEmoji(content)) {
       return <p className="text-base leading-relaxed">{content}</p>;
     }

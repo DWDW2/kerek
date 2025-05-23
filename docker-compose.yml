@@ -1,42 +1,50 @@
-version: "3.8"
+name: Node.js CI with Docker Compose
 
-services:
-  backend:
-    build:
-      context: ./api
-      dockerfile: Dockerfile
-    container_name: rust-backend
-    ports:
-      - "8080:8080"
-    depends_on:
-      - cassandra
-    environment:
-      - HOST=0.0.0.0
-      - PORT=8080
-      - JWT_SECRET=helloworld
-      - CASSANDRA_HOST=cassandra-db:9042
+on:
+  push:
+    branches:
+      - main
 
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: nextjs-frontend
-    ports:
-      - "3000:3000"
-    depends_on:
-      - backend
+jobs:
+  build:
+    runs-on: self-hosted
 
-  cassandra:
-    image: cassandra:4.1
-    container_name: cassandra-db
-    ports:
-      - "9042:9042"
-    volumes:
-      - cassandra-data:/var/lib/cassandra
-    environment:
-      - CASSANDRA_CLUSTER_NAME=MyCluster
-      - CASSANDRA_DC=DC1
-      - CASSANDRA_RACK=Rack1
+    strategy:
+      matrix:
+        node-version: [22.x]
 
-volumes:
-  cassandra-data:
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Create/Update .env file
+        run: |
+          echo "HCTI_USER_ID=${{ secrets.HCTI_USER_ID }}" > .env
+          echo "HCTI_API_KEY=${{ secrets.HCTI_API_KEY }}" >> .env
+          echo "EXCHANGE_RATE_API_KEY=${{ secrets.EXCHANGE_RATE_API_KEY }}" >> .env
+          echo "SCREENSHOTONE_ACCESS_KEY=${{ secrets.SCREENSHOTONE_ACCESS_KEY }}" >> .env
+          echo "QWEATHER_API=${{ secrets.QWEATHER_API }}" >> .env
+          echo "REDIS_HOST=${{ secrets.REDIS_HOST }}" >> .env
+          echo "REDIS_PORT=${{ secrets.REDIS_PORT }}" >> .env
+          echo "GEOCODE_API=${{ secrets.GEOCODE_API }}" >> .env
+          echo "NEXT_PUBLIC_API_BASE_URL=${{ secrets.NEXT_PUBLIC_API_BASE_URL }}" >> .env
+          echo "IPINFO_TOKEN=${{ secrets.IPINFO_TOKEN }}" >> .env
+          chmod 600 .env
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build project
+        run: npm run build --if-present
+
+      - name: Deploy with Docker Compose
+        run: |
+          cd /home/zhansar/actions-runner/_work/devtools-int/devtools-int
+          cp $GITHUB_WORKSPACE/.env .
+          docker-compose pull
+          docker-compose up -d --build

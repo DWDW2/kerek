@@ -6,13 +6,18 @@ import { useAuth } from "@/lib/auth-context";
 import JSConfetti from "js-confetti";
 import { useEffect, useRef } from "react";
 import { Message } from "@/types/conversation";
+import { ConversationCustomization } from "@/types/conversation";
 import Image from "next/image";
 
 interface MessageItemProps {
   message: Message;
+  customization?: ConversationCustomization;
 }
 
-const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
+const MessageItem: React.FC<MessageItemProps> = ({
+  message,
+  customization,
+}) => {
   const { user } = useAuth();
   const jsConfettiRef = useRef<JSConfetti | null>(null);
 
@@ -124,6 +129,17 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
     );
   };
 
+  const isOwnMessage = message.sender_id === user?.id;
+
+  // Get colors from customization or use defaults
+  const backgroundColor = isOwnMessage
+    ? customization?.primary_message_color || "hsl(var(--primary))"
+    : customization?.secondary_message_color || "hsl(var(--muted))";
+
+  const textColor = isOwnMessage
+    ? customization?.text_color_primary || "hsl(var(--primary-foreground))"
+    : customization?.text_color_secondary || "hsl(var(--foreground))";
+
   return (
     <motion.div
       key={message.id}
@@ -132,16 +148,18 @@ const MessageItem: React.FC<MessageItemProps> = ({ message }) => {
       transition={{ duration: 0.3 }}
       className={cn(
         "flex w-full",
-        message.sender_id === user?.id ? "justify-end" : "justify-start"
+        isOwnMessage ? "justify-end" : "justify-start"
       )}
     >
       <div
         className={cn(
           "max-w-[75%] rounded-2xl px-5 py-3.5 shadow-sm",
-          message.sender_id === user?.id
-            ? "bg-primary text-primary-foreground rounded-tr-none"
-            : "bg-muted rounded-tl-none"
+          isOwnMessage ? "rounded-tr-none" : "rounded-tl-none"
         )}
+        style={{
+          backgroundColor,
+          color: textColor,
+        }}
       >
         {renderMessageContent(message.content)}
         <p className="text-xs mt-2 opacity-70 text-right">

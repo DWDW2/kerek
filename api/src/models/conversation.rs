@@ -10,6 +10,7 @@ pub struct Conversation {
     pub updated_at: i64,
     pub last_message_at: Option<i64>,
     pub participant_ids: Vec<String>,
+    pub customization: Option<ConversationCustomization>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -48,6 +49,7 @@ impl Conversation {
             updated_at: now,
             last_message_at: None,
             participant_ids,
+            customization: None,
         }
     }
 }

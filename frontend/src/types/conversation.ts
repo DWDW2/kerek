@@ -7,6 +7,14 @@ export interface Message {
   updated_at: string;
 }
 
+export interface ConversationCustomization {
+  background_image_url?: string;
+  primary_message_color?: string;
+  secondary_message_color?: string;
+  text_color_primary?: string;
+  text_color_secondary?: string;
+}
+
 export interface Conversation {
   id: string;
   name: string | null;
@@ -14,6 +22,7 @@ export interface Conversation {
   created_at: string;
   updated_at: string;
   last_message?: Message;
+  customization?: ConversationCustomization;
 }
 
 export interface NewMessage {

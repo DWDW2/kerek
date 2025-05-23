@@ -7,10 +7,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/lib/auth-context";
 import { useMessages } from "@/hooks/use-messages";
 import { Message } from "@/types/conversation";
+import { ConversationCustomization as CustomizationType } from "@/types/conversation";
 import { useConversation } from "@/hooks/use-conversation";
 import ConversationHeader from "./conversation-header";
 import MessageList from "./message-list";
 import MessageInput from "./message-input";
+import { ConversationCustomization } from "./conversation-customization";
+import { updateConversationCustomization } from "@/server/conversations";
 import { useUser } from "@/hooks/use-user";
 import Link from "next/link";
 import { ArrowLeftIcon } from "lucide-react";
@@ -23,7 +26,6 @@ export function ConversationDetail() {
   const [wsError, setWsError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
-
   const {
     messages,
     isLoading: isLoadingMessages,
@@ -34,13 +36,16 @@ export function ConversationDetail() {
     mergeMessages,
   } = useMessages(conversationId as string);
 
-  const { conversation, isLoading: isLoadingConversation } = useConversation(
-    conversationId as string
-  );
+  const {
+    conversation,
+    isLoading: isLoadingConversation,
+    refetch: refetchConversation,
+  } = useConversation(conversationId as string);
   const { user } = useAuth();
   const { user: reciever, isLoading: isLoadingReciever } = useUser(
     conversation?.participant_ids.find((id) => id !== user?.id) || ""
   );
+
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -205,6 +210,12 @@ export function ConversationDetail() {
           <ArrowLeftIcon />
         </Link>
         <ConversationHeader reciever={reciever!} />
+        <div className="ml-auto">
+          <ConversationCustomization
+            conversationId={conversationId as string}
+            currentCustomization={conversation.customization}
+          />
+        </div>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col p-0">
         <MessageList
@@ -213,6 +224,7 @@ export function ConversationDetail() {
           isLoadingMore={isLoadingMore}
           loadOlderMessages={loadOlderMessages}
           scrollRef={scrollRef as React.RefObject<HTMLDivElement>}
+          customization={conversation.customization}
         />
         <div className="border-t p-5 bg-gradient-to-r from-background to-muted/30">
           <MessageInput

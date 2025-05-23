@@ -17,7 +17,7 @@ use actix_web::web;
 use std::time::{SystemTime, UNIX_EPOCH};
 use scylla::value::CqlTimeuuid;
 use std::marker::PhantomData;
-
+use aws_sdk_s3 as s3;
 pub struct ConversationService {
     session: web::Data<Session>,
 }
@@ -68,6 +68,7 @@ impl ConversationService {
                     updated_at: now,
                     last_message_at: None,
                     participant_ids: participants.into_iter().map(|p| p.to_string()).collect(),
+                    customization: None,
                 });
             }
         }
@@ -131,6 +132,7 @@ impl ConversationService {
             updated_at: now,
             last_message_at: None,
             participant_ids: participants.into_iter().map(|p| p.to_string()).collect(),
+            customization: None,
         })
     }
     
@@ -171,6 +173,21 @@ impl ConversationService {
 
         if let Some((id, title, created_at, updated_at)) = results.first() {
             let participants = self.get_conversation_participants(&id.to_string()).await?;
+            let customization = db_client.query::<(Option<String>, Option<String>, Option<String>, Option<String>, Option<String>), _>(
+                "SELECT background_image_url, primary_message_color, secondary_message_color, text_color_primary, text_color_secondary FROM conversation_customization WHERE conversation_id = ?",
+                Some((id,))
+            ).await?;
+
+            let customization = customization.first().map(|(background_image_url, primary_message_color, secondary_message_color, text_color_primary, text_color_secondary)| {
+                ConversationCustomization {
+                    background_image_url: background_image_url.clone(),
+                    primary_message_color: primary_message_color.clone(),
+                    secondary_message_color: secondary_message_color.clone(),
+                    text_color_primary: text_color_primary.clone(),
+                    text_color_secondary: text_color_secondary.clone(),
+                }
+            });
+
             Ok(Conversation {
                 id: id.to_string(),
                 name: title.clone(),
@@ -179,6 +196,7 @@ impl ConversationService {
                 updated_at: updated_at.0,
                 last_message_at: None,
                 participant_ids: participants.into_iter().map(|p| p.to_string()).collect(),
+                customization,
             })
         } else {
             Err(AppError("Conversation not found".into(), StatusCode::NOT_FOUND))
@@ -218,6 +236,21 @@ impl ConversationService {
     
             if let Some((title, created_at, updated_at)) = results.first() {
                 let participants = self.get_conversation_participants(&id.to_string()).await?;
+                let customization = db_client.query::<(Option<String>, Option<String>, Option<String>, Option<String>, Option<String>), _>(
+                    "SELECT background_image_url, primary_message_color, secondary_message_color, text_color_primary, text_color_secondary FROM conversation_customization WHERE conversation_id = ?",
+                    Some((id,))
+                ).await?;
+
+                let customization = customization.first().map(|(background_image_url, primary_message_color, secondary_message_color, text_color_primary, text_color_secondary)| {
+                    ConversationCustomization {
+                        background_image_url: background_image_url.clone(),
+                        primary_message_color: primary_message_color.clone(),
+                        secondary_message_color: secondary_message_color.clone(),
+                        text_color_primary: text_color_primary.clone(),
+                        text_color_secondary: text_color_secondary.clone(),
+                    }   
+                });
+
                 conversations.push(Conversation {
                     id: id.to_string(),
                     name: title.clone(),
@@ -226,6 +259,7 @@ impl ConversationService {
                     updated_at: updated_at.0,
                     last_message_at: None,
                     participant_ids: participants.into_iter().map(|p| p.to_string()).collect(),
+                    customization,
                 });
             }
         }
@@ -347,7 +381,7 @@ impl ConversationService {
         conversation_id: &str,
         customization_json: ConversationCustomization,
         mut multipart: Multipart,
-        s3_client: aws_sdk_s3::Client,
+        s3_client: web::Data<s3::Client>,
     ) -> Result<ConversationCustomization, AppError> {
         let conversation_uuid = Uuid::parse_str(conversation_id)
             .map_err(|e| AppError(format!("Invalid conversation ID: {}", e), StatusCode::BAD_REQUEST))?;
@@ -359,22 +393,18 @@ impl ConversationService {
 
             if let Some(name) = content_disposition.unwrap().get_name() {
                 if name == "background_image" {
-                    // Extract filename for key
                     let filename = content_disposition.unwrap().get_filename().map_or_else(
                         || format!("{}.bin", Uuid::new_v4()),
                         |f| f.to_string(),
                     );
 
-                    // Buffer the file bytes
                     let mut file_bytes = Vec::new();
                     while let Some(chunk) = field.try_next().await.map_err(|e| AppError(format!("Failed to get next chunk: {}", e), StatusCode::INTERNAL_SERVER_ERROR))? {
                         file_bytes.extend_from_slice(&chunk);
                     }
 
-                    // 2. Upload to Cloudflare R2
-                    let bucket = std::env::var("R2_BUCKET").map_err(|_| AppError("R2_BUCKET not set".into(), StatusCode::INTERNAL_SERVER_ERROR))?;
+                    let bucket = std::env::var("CLOUDFLARE_R2_BUCKET_NAME").map_err(|_| AppError("R2_BUCKET not set".into(), StatusCode::INTERNAL_SERVER_ERROR))?;
 
-                    // Use the filename (or generate key) as object key in R2
                     s3_client.put_object()
                         .bucket(bucket)
                         .key(&filename)
@@ -383,15 +413,13 @@ impl ConversationService {
                         .await
                         .map_err(|e| AppError(format!("Failed to upload to R2: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?;
 
-                    // 3. Construct the public URL for the uploaded file
-                    let account_id = std::env::var("R2_ACCOUNT_ID").unwrap_or_default();
+                    let account_id = std::env::var("CLOUDFLARE_R2_ACCESS_KEY_ID").unwrap_or_default();
                     let endpoint = format!("https://{}.r2.cloudflarestorage.com", account_id);
                     background_image_url = Some(format!("{}/{}", endpoint, filename));
                 }
             }
         }
 
-        // 4. Update DB with the new background_image_url and other customization fields
         let db_client = DbClient::<ConversationCustomization> { 
             session: &self.session, 
             _phantom: PhantomData 
@@ -428,7 +456,6 @@ impl ConversationService {
             ).await?;
         }
 
-        // Return updated customization with the new background_image_url
         let updated_customization = ConversationCustomization {
             background_image_url,
             primary_message_color: customization_json.primary_message_color,

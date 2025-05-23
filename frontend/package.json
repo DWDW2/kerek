@@ -9,6 +9,8 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.816.0",
+    "@aws-sdk/s3-request-presigner": "^3.816.0",
     "@excalidraw/excalidraw": "^0.18.0",
     "@radix-ui/react-avatar": "^1.1.9",
     "@radix-ui/react-dialog": "^1.1.13",
@@ -21,6 +23,7 @@
     "@radix-ui/react-tabs": "^1.1.11",
     "@radix-ui/react-tooltip": "^1.2.6",
     "@t3-oss/env-nextjs": "^0.13.4",
+    "@types/uuid": "^10.0.0",
     "ai": "^4.3.15",
     "better-auth": "^1.2.7",
     "class-variance-authority": "^0.7.1",
@@ -41,6 +44,7 @@
     "react-intersection-observer": "^9.16.0",
     "sonner": "^2.0.3",
     "tailwind-merge": "^3.2.0",
+    "uuid": "^11.1.0",
     "vaul": "^1.1.2",
     "zod": "^3.24.4"
   },

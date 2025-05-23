@@ -31,10 +31,10 @@ async fn main() -> std::io::Result<()> {
 
     let session = db::connect().await.unwrap();
     let session_data = web::Data::new(session);
-    let bucket_name = env::var("BUCKET_NAME").expect("BUCKET_NAME must be set");
-    let account_id = env::var("ACCOUNT_ID").expect("ACCOUNT_ID must be set");
-    let access_key_id = env::var("ACCESS_KEY_ID").expect("ACCESS_KEY_ID must be set");
-    let access_key_secret = env::var("ACCESS_KEY_SECRET").expect("ACCESS_KEY_SECRET must be set");
+    let bucket_name = env::var("CLOUDFLARE_R2_BUCKET_NAME").expect("BUCKET_NAME must be set");
+    let account_id = env::var("CLOUDFLARE_R2_ACCOUNT_ID").expect("ACCOUNT_ID must be set");
+    let access_key_id = env::var("CLOUDFLARE_R2_ACCESS_KEY_ID").expect("ACCESS_KEY_ID must be set");
+    let access_key_secret = env::var("CLOUDFLARE_R2_SECRET_ACCESS_KEY").expect("ACCESS_KEY_SECRET must be set");
 
     let config = aws_config::defaults(BehaviorVersion::latest())
         .endpoint_url(format!("https://{}.r2.cloudflarestorage.com", account_id))
@@ -111,7 +111,7 @@ async fn main() -> std::io::Result<()> {
                                     .route("/{id}", web::put().to(conversation_handler::update_conversation))
                                     .route("/{id}/messages", web::post().to(conversation_handler::send_message))
                                     .route("/{id}/messages", web::get().to(conversation_handler::list_messages))
-                                    .route("/{id}/customization", web::put().to(conversation_handler::update_conversation_customization))
+                                    .route("/{id}/customization", web::post().to(conversation_handler::update_conversation_customization))
                             )
                     )
             )

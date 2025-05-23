@@ -110,7 +110,7 @@ export function ConversationCustomization({
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ customization: updatedCustomization }),
+          body: JSON.stringify(updatedCustomization),
         }
       );
 

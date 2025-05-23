@@ -379,10 +379,14 @@ impl ConversationService {
     pub async fn update_conversation_customization(
         &self,
         conversation_id: &str,
+        user_id: &str,
         customization_json: ConversationCustomization,
     ) -> Result<ConversationCustomization, AppError> {
         let conversation_uuid = Uuid::parse_str(conversation_id)
             .map_err(|e| AppError(format!("Invalid conversation ID: {}", e), StatusCode::BAD_REQUEST))?;
+        
+        let user_uuid = Uuid::parse_str(user_id)
+            .map_err(|e| AppError(format!("Invalid user ID: {}", e), StatusCode::BAD_REQUEST))?;
 
         let db_client = DbClient::<ConversationCustomization> { 
             session: &self.session, 
@@ -390,36 +394,41 @@ impl ConversationService {
         };
 
         let existing = db_client.query::<(Option<String>, Option<String>, Option<String>, Option<String>, Option<String>), _>(
-            "SELECT background_image_url, primary_message_color, secondary_message_color, text_color_primary, text_color_secondary FROM conversation_customization WHERE conversation_id = ?",
-            Some((conversation_uuid,))
+            "SELECT background_image_url, primary_message_color, secondary_message_color, text_color_primary, text_color_secondary FROM conversation_customization WHERE conversation_id = ? AND user_id = ?",
+            Some((conversation_uuid, user_uuid))
         ).await?;
-
+        
+        log::info!("Customization: {:?}", customization_json);
+        
         if existing.is_empty() {
             db_client.insert(
-                "INSERT INTO conversation_customization (conversation_id, background_image_url, primary_message_color, secondary_message_color, text_color_primary, text_color_secondary) VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO conversation_customization (conversation_id, user_id, background_image_url, primary_message_color, secondary_message_color, text_color_primary, text_color_secondary) VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (
                     conversation_uuid,
-                    &customization_json.background_image_url,
-                    &customization_json.primary_message_color,
-                    &customization_json.secondary_message_color,
-                    &customization_json.text_color_primary,
-                    &customization_json.text_color_secondary
+                    user_uuid,
+                    customization_json.background_image_url.clone(),
+                    customization_json.primary_message_color.clone(),
+                    customization_json.secondary_message_color.clone(),
+                    customization_json.text_color_primary.clone(),
+                    customization_json.text_color_secondary.clone()
                 )
             ).await?;
         } else {
             db_client.insert(
-                "UPDATE conversation_customization SET background_image_url = ?, primary_message_color = ?, secondary_message_color = ?, text_color_primary = ?, text_color_secondary = ? WHERE conversation_id = ?",
+                "UPDATE conversation_customization SET background_image_url = ?, primary_message_color = ?, secondary_message_color = ?, text_color_primary = ?, text_color_secondary = ? WHERE conversation_id = ? AND user_id = ?",
                 (
-                    &customization_json.background_image_url,
-                    &customization_json.primary_message_color,
-                    &customization_json.secondary_message_color,
-                    &customization_json.text_color_primary,
-                    &customization_json.text_color_secondary,
-                    conversation_uuid
+                    customization_json.background_image_url.clone(),
+                    customization_json.primary_message_color.clone(),
+                    customization_json.secondary_message_color.clone(),
+                    customization_json.text_color_primary.clone(),
+                    customization_json.text_color_secondary.clone(),
+                    conversation_uuid,
+                    user_uuid
                 )
             ).await?;
         }
-
+        
+        log::info!("Updated conversation customization for conversation {:?}", customization_json);
         Ok(customization_json)
     }
 }

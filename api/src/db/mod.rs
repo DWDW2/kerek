@@ -117,12 +117,13 @@ pub async fn setup_database(session: &web::Data<Session>, new: bool) -> Result<(
     session.query_unpaged(
         "CREATE TABLE IF NOT EXISTS conversation_customization (
             conversation_id UUID,
+            user_id UUID,
             background_image_url TEXT,
             primary_message_color TEXT,
             secondary_message_color TEXT,
             text_color_primary TEXT,
             text_color_secondary TEXT,  
-            PRIMARY KEY (conversation_id)
+            PRIMARY KEY (conversation_id, user_id)
         )",
         &[]
     ).await?;

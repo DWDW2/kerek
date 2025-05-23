@@ -56,7 +56,6 @@ const MessageList: React.FC<MessageListProps> = ({
         className="flex-1 px-6 relative h-[76vh]"
         style={backgroundStyle}
       >
-        {/* Background overlay for better readability */}
         {customization?.background_image_url && (
           <div className="absolute inset-0 bg-background/60 backdrop-blur-[2px]" />
         )}

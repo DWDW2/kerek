@@ -118,15 +118,18 @@ export async function updateConversationCustomization(
   file: File,
   token: string
 ): Promise<Conversation> {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("customization", JSON.stringify(customization));
+
   const response = await fetch(
     `${API_BASE}/conversations/${id}/customization`,
     {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ customization, background_image: file }),
+      body: formData,
     }
   );
   if (!response.ok)

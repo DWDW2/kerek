@@ -7,7 +7,6 @@ mod conversations;
 mod utils;
 use actix_cors::Cors;
 use actix_web::{web, App, HttpServer};
-use aws_config::BehaviorVersion;
 use dotenv::dotenv;
 use env_logger::Env;
 use middleware::auth::Auth;
@@ -21,7 +20,6 @@ use crate::utils::seed;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use std::collections::HashMap;
-use aws_sdk_s3 as s3;
 
 
 #[actix_web::main]
@@ -31,25 +29,7 @@ async fn main() -> std::io::Result<()> {
 
     let session = db::connect().await.unwrap();
     let session_data = web::Data::new(session);
-    let bucket_name = env::var("CLOUDFLARE_R2_BUCKET_NAME").expect("BUCKET_NAME must be set");
-    let account_id = env::var("CLOUDFLARE_R2_ACCOUNT_ID").expect("ACCOUNT_ID must be set");
-    let access_key_id = env::var("CLOUDFLARE_R2_ACCESS_KEY_ID").expect("ACCESS_KEY_ID must be set");
-    let access_key_secret = env::var("CLOUDFLARE_R2_SECRET_ACCESS_KEY").expect("ACCESS_KEY_SECRET must be set");
-
-    let config = aws_config::defaults(BehaviorVersion::latest())
-        .endpoint_url(format!("https://{}.r2.cloudflarestorage.com", account_id))
-        .credentials_provider(aws_sdk_s3::config::Credentials::new(
-            access_key_id,
-            access_key_secret,
-            None, 
-            None,
-            "R2",
-        ))
-        .region("auto")
-        .load()
-        .await;
-
-    let s3_client = s3::Client::new(&config);
+    
     let should_seed = env::args().any(|arg| arg == "--seed");
     db::setup_database(&session_data, should_seed).await.unwrap();
 
@@ -80,7 +60,6 @@ async fn main() -> std::io::Result<()> {
             .app_data(session_data.clone())
             .app_data(web::Data::new(room_store.clone()))
             .app_data(web::Data::new(jwt_secret.clone()))
-            .app_data(web::Data::new(s3_client.clone()))
             .route("/ws/{id}", web::get().to(websocket_handler::echo))
             .service(
                 web::scope("/api")

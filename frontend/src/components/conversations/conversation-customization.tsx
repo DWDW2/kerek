@@ -15,7 +15,6 @@ import {
 import type { ConversationCustomization } from "@/types/conversation";
 import { Upload, Palette, Image as ImageIcon, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { updateConversationCustomization } from "@/server/conversations";
 import { useAuth } from "@/lib/auth-context";
 
 interface ConversationCustomizationProps {
@@ -80,12 +79,45 @@ export function ConversationCustomization({
 
     setIsSaving(true);
     try {
-      await updateConversationCustomization(
-        conversationId,
-        customization,
-        file,
-        token
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("folder", `conversations/${conversationId}/backgrounds`);
+
+      const uploadResponse = await fetch("/api/upload", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error("Failed to upload image");
+      }
+
+      const uploadResult = await uploadResponse.json();
+
+      const updatedCustomization = {
+        ...customization,
+        background_image_url: uploadResult.url,
+      };
+
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/conversations/${conversationId}/customization`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ customization: updatedCustomization }),
+        }
       );
+
+      if (!response.ok) {
+        throw new Error("Failed to update conversation customization");
+      }
+
       toast.success("Conversation appearance updated!");
       setIsOpen(false);
     } catch (error) {

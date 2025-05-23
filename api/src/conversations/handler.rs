@@ -123,19 +123,17 @@ pub async fn update_conversation_customization(
     req: HttpRequest,
     conversation_id: web::Path<String>,
     customization: web::Json<ConversationCustomization>,
-    s3_client: web::Data<s3::Client>,
-    mut multipart: Multipart,
 ) -> Result<HttpResponse, AppError> {
     let user_id = get_user_id_from_token(&req)?;
     let service = ConversationService::new(session).await?;
-
+    log::info!("Updating conversation customization for conversation {}", conversation_id);
     let conversation = service.get_conversation(&conversation_id).await?;
     
     if !conversation.participant_ids.contains(&user_id) {
         return Err(AppError("Not authorized to update this conversation".to_string(), StatusCode::FORBIDDEN));
     }
 
-    let conversation = service.update_conversation_customization(&conversation_id, customization.into_inner(), multipart, s3_client).await?;
+    let conversation = service.update_conversation_customization(&conversation_id, customization.into_inner()).await?;
     Ok(HttpResponse::Ok().json(conversation))
 }
 

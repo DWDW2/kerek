@@ -13,7 +13,6 @@ import ConversationHeader from "./conversation-header";
 import MessageList from "./message-list";
 import MessageInput from "./message-input";
 import { ConversationCustomization } from "./conversation-customization";
-import { updateConversationCustomization } from "@/server/conversations";
 import { useUser } from "@/hooks/use-user";
 import Link from "next/link";
 import { ArrowLeftIcon } from "lucide-react";

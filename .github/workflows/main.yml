@@ -20,7 +20,7 @@ jobs:
           username: ${{ secrets.DROPLET_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            mkdir -p ./frontend
+            cd ./kerek
             cat > ./frontend/.env <<EOF
             NEXT_PUBLIC_API_URL=https://kerek.club:8080/api
             API_URL=http://rust-backend:8080/api
@@ -31,10 +31,13 @@ jobs:
             CLOUDFLARE_R2_ENDPOINT=${{ secrets.CLOUDFLARE_R2_ENDPOINT }}
             NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL=${{ secrets.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL }}
             EOF
-            mkdir -p ./api
+            cd ./api
             cat > ./api/.env <<EOF
             HOST=127.0.0.1
             PORT=8080
             JWT_SECRET=${{ secrets.JWT_SECRET }}
             EOF
             chmod 600 ./frontend/.env ./api/.env
+
+            cd ./kerek
+            docker-compose up -d --build

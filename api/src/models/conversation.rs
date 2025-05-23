@@ -51,3 +51,14 @@ impl Conversation {
         }
     }
 }
+
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ConversationCustomization {
+    pub background_image_url: Option<String>,
+    pub primary_message_color: Option<String>,
+    pub secondary_message_color: Option<String>,
+    pub text_color_primary: Option<String>,
+    pub text_color_secondary: Option<String>,
+}
+

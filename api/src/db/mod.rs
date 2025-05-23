@@ -41,15 +41,6 @@ pub async fn setup_database(session: &web::Data<Session>, new: bool) -> Result<(
         session.query_unpaged("DROP TABLE IF EXISTS users", &[]).await?;
         session.query_unpaged("DROP TABLE IF EXISTS user_conversations", &[]).await?;
         session.query_unpaged("DROP TABLE IF EXISTS one_to_one_conversations", &[]).await?;
-        session.query_unpaged("DROP TABLE IF EXISTS user_languages", &[]).await?;
-        session.query_unpaged("DROP TABLE IF EXISTS language_partner_requests", &[]).await?;
-        session.query_unpaged("DROP TABLE IF EXISTS language_challenges", &[]).await?;
-        session.query_unpaged("DROP TABLE IF EXISTS user_challenge_progress", &[]).await?;
-        session.query_unpaged("DROP TABLE IF EXISTS achievements", &[]).await?;
-        session.query_unpaged("DROP TABLE IF EXISTS user_achievements", &[]).await?;
-        session.query_unpaged("DROP TABLE IF EXISTS cultural_topics", &[]).await?;
-        session.query_unpaged("DROP TABLE IF EXISTS message_corrections", &[]).await?;
-        session.query_unpaged("DROP TABLE IF EXISTS user_statistics", &[]).await?;
     }
     
     session.query_unpaged(
@@ -124,134 +115,17 @@ pub async fn setup_database(session: &web::Data<Session>, new: bool) -> Result<(
     ).await?;
 
     session.query_unpaged(
-        "CREATE TABLE IF NOT EXISTS user_languages (
-            user_id UUID,
-            language_code TEXT,
-            proficiency_level TEXT,
-            is_native BOOLEAN,
-            learning_since TIMESTAMP,
-            PRIMARY KEY (user_id, language_code)
+        "CREATE TABLE IF NOT EXISTS conversation_customization (
+            conversation_id UUID,
+            background_image_url TEXT,
+            primary_message_color TEXT,
+            secondary_message_color TEXT,
+            text_color_primary TEXT,
+            text_color_secondary TEXT,  
+            PRIMARY KEY (conversation_id)
         )",
         &[]
     ).await?;
     
-    session.query_unpaged(
-        "CREATE TABLE IF NOT EXISTS language_partner_requests (
-            request_id UUID PRIMARY KEY,
-            requester_id UUID,
-            recipient_id UUID,
-            status TEXT,
-            requested_at TIMESTAMP,
-            updated_at TIMESTAMP
-        )",
-        &[]
-    ).await?;
-    
-    session.query_unpaged(
-        "CREATE INDEX IF NOT EXISTS ON language_partner_requests (requester_id)",
-        &[]
-    ).await?;
-    
-    session.query_unpaged(
-        "CREATE INDEX IF NOT EXISTS ON language_partner_requests (recipient_id)",
-        &[]
-    ).await?;
-    
-    session.query_unpaged(
-        "CREATE TABLE IF NOT EXISTS language_challenges (
-            challenge_id UUID PRIMARY KEY,
-            title TEXT,
-            description TEXT,
-            language_code TEXT,
-            difficulty_level TEXT,
-            points INT,
-            created_at TIMESTAMP,
-            expires_at TIMESTAMP
-        )",
-        &[]
-    ).await?;
-    
-    session.query_unpaged(
-        "CREATE INDEX IF NOT EXISTS ON language_challenges (language_code)",
-        &[]
-    ).await?;
-    
-    session.query_unpaged(
-        "CREATE TABLE IF NOT EXISTS user_challenge_progress (
-            user_id UUID,
-            challenge_id UUID,
-            status TEXT,
-            started_at TIMESTAMP,
-            completed_at TIMESTAMP,
-            PRIMARY KEY (user_id, challenge_id)
-        )",
-        &[]
-    ).await?;
-    
-    session.query_unpaged(
-        "CREATE TABLE IF NOT EXISTS achievements (
-            achievement_id UUID PRIMARY KEY,
-            title TEXT,
-            description TEXT,
-            points INT,
-            badge_image_url TEXT,
-            criteria TEXT
-        )",
-        &[]
-    ).await?;
-    
-    session.query_unpaged(
-        "CREATE TABLE IF NOT EXISTS user_achievements (
-            user_id UUID,
-            achievement_id UUID,
-            earned_at TIMESTAMP,
-            PRIMARY KEY (user_id, achievement_id)
-        )",
-        &[]
-    ).await?;
-    
-    session.query_unpaged(
-        "CREATE TABLE IF NOT EXISTS cultural_topics (
-            topic_id UUID PRIMARY KEY,
-            title TEXT,
-            description TEXT,
-            language_code TEXT,
-            category TEXT,
-            created_at TIMESTAMP
-        )",
-        &[]
-    ).await?;
-    
-    session.query_unpaged(
-        "CREATE INDEX IF NOT EXISTS ON cultural_topics (language_code)",
-        &[]
-    ).await?;
-    
-    session.query_unpaged(
-        "CREATE TABLE IF NOT EXISTS message_corrections (
-            message_id TIMEUUID,
-            corrector_id UUID,
-            original_content TEXT,
-            corrected_content TEXT,
-            correction_notes TEXT,
-            corrected_at TIMESTAMP,
-            PRIMARY KEY (message_id, corrector_id)
-        )",
-        &[]
-    ).await?;
-    
-    session.query_unpaged(
-        "CREATE TABLE IF NOT EXISTS user_statistics (
-            user_id UUID PRIMARY KEY,
-            messages_sent INT,
-            corrections_given INT,
-            corrections_received INT,
-            challenges_completed INT,
-            achievements_earned INT,
-            total_points INT,
-            last_updated TIMESTAMP
-        )",
-        &[]
-    ).await?;
     Ok(())
 }

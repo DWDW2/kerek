@@ -1,14 +1,11 @@
 use scylla::client::session::Session;
 use serde::{Deserialize, Serialize};
 use crate::{
-    models::{
-        conversation::{Conversation, NewConversation},
+    error::AppError, models::{
+        conversation::{Conversation, ConversationCustomization, NewConversation},
         message::{Message, NewMessage},
         user::User,
-    }, 
-    utils::one_to_one::one_to_one_key,
-    utils::db_client::DbClient,
-    error::AppError
+    }, utils::{db_client::DbClient, one_to_one::one_to_one_key}
 };
 use chrono::Utc;
 use uuid::{NoContext, Timestamp, Uuid};
@@ -341,5 +338,52 @@ impl ConversationService {
             .collect();
 
         Ok(messages)
+    }
+
+    pub async fn update_conversation_customization(
+        &self,
+        conversation_id: &str,
+        customization_json: ConversationCustomization,
+    ) -> Result<ConversationCustomization, AppError> {
+        let conversation_uuid = Uuid::parse_str(conversation_id)
+            .map_err(|e| AppError(format!("Invalid conversation ID: {}", e), StatusCode::BAD_REQUEST))?;
+
+        let db_client = DbClient::<ConversationCustomization> { 
+            session: &self.session, 
+            _phantom: PhantomData 
+        };
+        
+        let existing = db_client.query::<(Option<String>, Option<String>, Option<String>, Option<String>, Option<String>), _>(
+            "SELECT background_image_url, primary_message_color, secondary_message_color, text_color_primary, text_color_secondary FROM conversation_customization WHERE conversation_id = ?",
+            Some((conversation_uuid,))
+        ).await?;
+
+        if existing.is_empty() {
+            db_client.insert(
+                "INSERT INTO conversation_customization (conversation_id, background_image_url, primary_message_color, secondary_message_color, text_color_primary, text_color_secondary) VALUES (?, ?, ?, ?, ?, ?)",
+                (
+                    conversation_uuid,
+                    &customization_json.background_image_url,
+                    &customization_json.primary_message_color,
+                    &customization_json.secondary_message_color,
+                    &customization_json.text_color_primary,
+                    &customization_json.text_color_secondary
+                )
+            ).await?;
+        } else {
+            db_client.insert(
+                "UPDATE conversation_customization SET background_image_url = ?, primary_message_color = ?, secondary_message_color = ?, text_color_primary = ?, text_color_secondary = ? WHERE conversation_id = ?",
+                (
+                    &customization_json.background_image_url,
+                    &customization_json.primary_message_color,
+                    &customization_json.secondary_message_color,
+                    &customization_json.text_color_primary,
+                    &customization_json.text_color_secondary,
+                    conversation_uuid
+                )
+            ).await?;
+        }
+
+        Ok(customization_json)
     }
 }

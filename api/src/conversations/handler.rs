@@ -1,16 +1,18 @@
 use actix_web::{web, HttpResponse, HttpRequest};
 use scylla::client::session::Session;
 use crate::models::{
-    conversation::{Conversation, NewConversation},
-    message::{Message, NewMessage},
+    conversation::{ NewConversation, ConversationCustomization},
+    message::{NewMessage},
 };
 use crate::error::AppError;
 use crate::conversations::service::ConversationService;
 use serde::{Serialize, Deserialize};
 use actix_web::http::StatusCode;
-use jsonwebtoken::{decode, DecodingKey, Validation};
-use std::env;
 use crate::utils::jwt::get_user_id_from_token;
+use actix_multipart::Multipart;
+use futures_util::StreamExt as _;
+use aws_sdk_s3 as s3;
+use aws_smithy_types::date_time::Format::DateTime;
 
 
 
@@ -115,3 +117,23 @@ pub async fn send_message(
         .await?;
     Ok(HttpResponse::Created().json(message))
 }
+
+pub async fn update_conversation_customization(
+    session: web::Data<Session>,
+    req: HttpRequest,
+    conversation_id: web::Path<String>,
+    customization: web::Json<ConversationCustomization>,
+    mut multipart: Multipart,
+) -> Result<HttpResponse, AppError> {
+    let user_id = get_user_id_from_token(&req)?;
+    let service = ConversationService::new(session).await?;
+
+    let conversation = service.get_conversation(&conversation_id).await?;
+    if !conversation.participant_ids.contains(&user_id) {
+        return Err(AppError("Not authorized to update this conversation".to_string(), StatusCode::FORBIDDEN));
+    }
+
+    let conversation = service.update_conversation_customization(&conversation_id, customization.into_inner()).await?;
+    Ok(HttpResponse::Ok().json(conversation))
+}
+

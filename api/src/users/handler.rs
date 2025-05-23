@@ -1,4 +1,4 @@
-use actix_web::{web, HttpMessage, HttpRequest, HttpResponse, Responder};
+use actix_web::{web, HttpRequest, HttpResponse, Responder};
 use bcrypt::verify;
 use jsonwebtoken::{encode, Header, EncodingKey};
 use chrono::{Utc, Duration};
@@ -44,7 +44,7 @@ pub async fn login(
 ) -> Result<impl Responder, AppError> {
     let user = service::find_by_email(&session, &credentials.email).await?
         .ok_or_else(|| AppError("Invalid email or password".to_string(), actix_web::http::StatusCode::UNAUTHORIZED))?;
-
+    log::info!("User: {:?}", user);
     if !verify(&credentials.password, &user.password_hash)
         .map_err(|_| AppError("Invalid email or password".to_string(), actix_web::http::StatusCode::UNAUTHORIZED))? {
         return Err(AppError("Invalid email or password".to_string(), actix_web::http::StatusCode::UNAUTHORIZED));
@@ -53,7 +53,7 @@ pub async fn login(
     service::update_user_status(&session, &user.id, true).await?;
 
     let token = generate_token(&user.id)?;
-    
+    log::info!("Token: {:?}", token);
     Ok(HttpResponse::Ok().json(AuthResponse {
         token,
         user: user,
@@ -82,6 +82,8 @@ pub async fn update_profile(
         username: update_data.username.clone().unwrap_or(user.username),
         email: update_data.email.clone().unwrap_or(user.email),
         password: update_data.password.clone().unwrap_or(user.password_hash),
+        interests: Some(update_data.interests.clone().unwrap_or("".to_string())),
+        language: Some(update_data.language.clone().unwrap_or("".to_string()))
     };
 
     let updated = service::update_user(&session, &user.id, updated_user).await?;

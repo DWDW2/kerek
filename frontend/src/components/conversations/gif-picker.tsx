@@ -1,16 +1,38 @@
 "use client";
-import { useEffect, useState } from "react";
+import { cache, useEffect, useState } from "react";
 import Image from "next/image";
 import { GiphyGif, GiphyTrendingResponse } from "@/types/giphy";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import { Loader2, Search, Image as ImageIcon } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 
 interface GifPickerProps {
   onGifSelect: (gifUrl: string) => void;
 }
+
+async function fetchGifs(query?: string) {
+  const endpoint = query
+    ? `https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_API_KEY}&q=${encodeURIComponent(
+        query
+      )}&limit=24&rating=g`
+    : `https://api.giphy.com/v1/gifs/trending?api_key=${GIPHY_API_KEY}&limit=24&rating=g`;
+
+  try {
+    const response = await fetch(endpoint);
+    if (!response.ok) {
+      throw new Error(`Giphy API Error: ${response.statusText}`);
+    }
+    const data: GiphyTrendingResponse = await response.json();
+    return data.data;
+  } catch (err) {
+    console.error("Failed to fetch Gifs:", err);
+    throw err instanceof Error ? err : new Error("Failed to load GIFs");
+  }
+}
+
+const cacheFetchGifs = cache(fetchGifs);
 
 const GIPHY_API_KEY = process.env.NEXT_PUBLIC_GIPHY_API_KEY || "API_KEY";
 
@@ -21,35 +43,10 @@ export function GifPicker({ onGifSelect }: GifPickerProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const isDesktop = useMediaQuery("(min-width: 768px)");
-
-  async function fetchGifs(query?: string) {
-    setIsLoading(true);
-    setError(null);
-    const endpoint = query
-      ? `https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_API_KEY}&q=${encodeURIComponent(
-          query
-        )}&limit=24&rating=g`
-      : `https://api.giphy.com/v1/gifs/trending?api_key=${GIPHY_API_KEY}&limit=24&rating=g`;
-
-    try {
-      const response = await fetch(endpoint);
-      if (!response.ok) {
-        throw new Error(`Giphy API Error: ${response.statusText}`);
-      }
-      const data: GiphyTrendingResponse = await response.json();
-      setGifs(data.data);
-    } catch (err) {
-      console.error("Failed to fetch Gifs:", err);
-      setError(err instanceof Error ? err.message : "Failed to load GIFs");
-      setGifs([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
+  console.log();
   useEffect(() => {
     if (isPopoverOpen || !isDesktop) {
-      fetchGifs();
+      cacheFetchGifs().then((gifs) => setGifs(gifs));
     }
   }, [isPopoverOpen, isDesktop]);
 
@@ -93,9 +90,9 @@ export function GifPicker({ onGifSelect }: GifPickerProps) {
               if (e.key === "Enter") {
                 e.preventDefault();
                 if (searchTerm.trim()) {
-                  fetchGifs(searchTerm);
+                  cacheFetchGifs(searchTerm);
                 } else {
-                  fetchGifs();
+                  cacheFetchGifs();
                 }
               }
             }}
@@ -108,9 +105,9 @@ export function GifPicker({ onGifSelect }: GifPickerProps) {
             disabled={isLoading}
             onClick={() => {
               if (searchTerm.trim()) {
-                fetchGifs(searchTerm);
+                cacheFetchGifs(searchTerm);
               } else {
-                fetchGifs();
+                cacheFetchGifs();
               }
             }}
           >

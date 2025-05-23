@@ -12,6 +12,8 @@ import ConversationHeader from "./conversation-header";
 import MessageList from "./message-list";
 import MessageInput from "./message-input";
 import { useUser } from "@/hooks/use-user";
+import Link from "next/link";
+import { ArrowLeftIcon } from "lucide-react";
 
 export function ConversationDetail() {
   const { id: conversationId } = useParams();
@@ -197,8 +199,11 @@ export function ConversationDetail() {
   }
 
   return (
-    <Card className="h-full flex flex-col border-none shadow-none rounded-none p-0">
-      <CardHeader className="border-b px-6 py-6 bg-gradient-to-r from-primary/10 to-secondary/10">
+    <Card className="h-full flex flex-col border-none shadow-none rounded-none p-0 m-0">
+      <CardHeader className="border-b px-6 py-6 bg-gradient-to-r from-primary/10 to-secondary/10 flex items-center gap-2">
+        <Link href="/dashboard">
+          <ArrowLeftIcon />
+        </Link>
         <ConversationHeader reciever={reciever!} />
       </CardHeader>
       <CardContent className="flex-1 flex flex-col p-0">

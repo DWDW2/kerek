@@ -35,12 +35,12 @@ impl ConversationService {
     ) -> Result<Conversation, AppError> {
         let now = Utc::now().timestamp();
         let is_group = new_conversation.participant_ids.len() > 2;
-        
+
         let db_client = DbClient::<Conversation> { 
             session: &self.session, 
             _phantom: PhantomData 
         };
-    
+
         let one_to_one_key = if !is_group {
             Some(one_to_one_key(
                 &creator_id,

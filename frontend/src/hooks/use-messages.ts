@@ -7,17 +7,6 @@ export function useMessages(id: string) {
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
 
-  // const mergeMessages = useCallback((newMsgs: Message[]) => {
-  //   setMessages((prev) => {
-  //     const map = new Map<string, Message>();
-  //     [...newMsgs, ...prev].forEach((msg) => map.set(msg.id, msg));
-  //     return Array.from(map.values()).sort(
-  //       (a, b) =>
-  //         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-  //     );
-  //   });
-  // }, []);
-
   const mergeMessages = useCallback((newMsg: Message[]) => {
     setMessages((prev) => [...prev, ...newMsg]);
   }, []);

@@ -5,6 +5,10 @@ import { Button } from "@/components/ui/button";
 import { AnimatePresence } from "framer-motion";
 import MessageItem from "./message-item";
 import { Message } from "@/types/conversation";
+import Image from "next/image";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth-context";
+import { useEffect } from "react";
 interface MessageListProps {
   messages: Message[];
   hasMore: boolean;
@@ -12,7 +16,6 @@ interface MessageListProps {
   loadOlderMessages: () => void;
   scrollRef: React.RefObject<HTMLDivElement>;
 }
-
 const MessageList: React.FC<MessageListProps> = ({
   messages,
   hasMore,
@@ -20,29 +23,64 @@ const MessageList: React.FC<MessageListProps> = ({
   loadOlderMessages,
   scrollRef,
 }) => {
+  const { user } = useAuth();
+  useEffect(() => {
+    if (!scrollRef.current) return;
+    const scrollAreaViewport = scrollRef.current?.querySelector(
+      "[data-radix-scroll-area-viewport]"
+    );
+    if (scrollAreaViewport) {
+      scrollAreaViewport.scrollTop = scrollAreaViewport.scrollHeight;
+    }
+  }, [messages]);
   return (
-    <ScrollArea ref={scrollRef} className="flex-1 px-6">
-      <div className="flex flex-col space-y-6 py-6">
-        {hasMore && (
-          <div className="flex justify-center">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={loadOlderMessages}
-              disabled={isLoadingMore}
-              className="bg-background/50 backdrop-blur-sm"
-            >
-              {isLoadingMore ? "Loading..." : "Load older messages"}
-            </Button>
-          </div>
-        )}
-        <AnimatePresence>
-          {messages.map((message) => (
-            <MessageItem key={message.id} message={message} />
-          ))}
-        </AnimatePresence>
-      </div>
-    </ScrollArea>
+    <div className="w-full">
+      <ScrollArea ref={scrollRef} className="flex-1 px-6 relative  h-[76vh]">
+        <div className="flex flex-col space-y-6 py-6">
+          {hasMore && (
+            <div className="flex justify-center">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={loadOlderMessages}
+                disabled={isLoadingMore}
+                className="bg-background/50 backdrop-blur-sm"
+              >
+                {isLoadingMore ? "Loading..." : "Load older messages"}
+              </Button>
+            </div>
+          )}
+          <AnimatePresence>
+            {messages.map((message) => {
+              const isGifMessage = message.content.match(
+                /https:\/\/media\d+\.giphy\.com/
+              );
+              return (
+                <div key={message.id}>
+                  {isGifMessage ? (
+                    <div
+                      className={cn(
+                        "relative w-48 h-48",
+                        message.sender_id === user?.id ? "ml-auto" : "mr-auto"
+                      )}
+                    >
+                      <Image
+                        src={message.content}
+                        alt="GIF message"
+                        fill
+                        className="object-cover rounded-lg"
+                      />
+                    </div>
+                  ) : (
+                    <MessageItem message={message} />
+                  )}
+                </div>
+              );
+            })}
+          </AnimatePresence>
+        </div>
+      </ScrollArea>
+    </div>
   );
 };
 

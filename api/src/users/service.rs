@@ -23,20 +23,18 @@ pub async fn create(session: &web::Data<Session>, new_user: NewUser) -> Result<U
     };
 
     db_client.insert(
-        "INSERT INTO users (id, username, email, password_hash, created_at, updated_at, last_seen_at, is_online) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        (&id, &new_user.username, &new_user.email, &password_hash, CqlTimestamp(now), CqlTimestamp(now), None::<CqlTimestamp>, false)
+        "INSERT INTO users (id, username, email, password_hash, created_at, updated_at, last_seen_at, is_online, interests, language) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (&id, &new_user.username, &new_user.email, &password_hash, CqlTimestamp(now), CqlTimestamp(now), None::<CqlTimestamp>, false, &new_user.interests, &new_user.language)
     ).await?;
-    
-    Ok(User {
-        id: id.to_string(),
-        username: new_user.username,
-        email: new_user.email,
+
+    Ok(User::new(
+        id.to_string(),
+        new_user.username,
+        new_user.email,
         password_hash,
-        created_at: now,
-        updated_at: now,
-        last_seen_at: None,
-        is_online: false,
-    })
+        Some(new_user.interests.unwrap_or("".to_string())),
+        Some(new_user.language.unwrap_or("".to_string()))
+    ))
 }
 
 pub async fn find_by_email(session: &web::Data<Session>, email: &str) -> Result<Option<User>, AppError> {
@@ -45,22 +43,24 @@ pub async fn find_by_email(session: &web::Data<Session>, email: &str) -> Result<
         _phantom: PhantomData 
     };
 
-    let results = db_client.query::<(Uuid, String, String, String, CqlTimestamp, CqlTimestamp, Option<CqlTimestamp>, bool), _>(
-        "SELECT id, username, email, password_hash, created_at, updated_at, last_seen_at, is_online FROM users WHERE email = ?",
+    let results = db_client.query::<(Uuid, String, String, String, CqlTimestamp, CqlTimestamp, Option<CqlTimestamp>, bool, Option<String>, Option<String> ), _>(
+        "SELECT id, username, email, password_hash, created_at, updated_at, last_seen_at, is_online, interests, language FROM users WHERE email = ?",
         Some((email,))
     ).await?;
 
     if let Some(row) = results.first() {
-        let (id, username, email, password_hash, created_at, updated_at, last_seen_at, is_online) = row.clone();
+        let (id, username, email, password_hash, created_at, updated_at, last_seen_at, is_online, interests, language ) = row.clone();
         Ok(Some(User {
             id: id.to_string(),
             username,
             email,
             password_hash,
             created_at: created_at.0,
-            updated_at: updated_at.0,
+            updated_at: updated_at.0,   
             last_seen_at: last_seen_at.map(|ts| ts.0),
             is_online,
+            interests: interests.map(|s| s.to_string()),
+            language: language.map(|s| s.to_string()),
         }))
     } else {
         Ok(None)
@@ -75,13 +75,13 @@ pub async fn find_by_id(session: &web::Data<Session>, id: &str) -> Result<Option
         _phantom: PhantomData 
     };
 
-    let results = db_client.query::<(Uuid, String, String, String, CqlTimestamp, CqlTimestamp, Option<CqlTimestamp>, bool), _>(
-        "SELECT id, username, email, password_hash, created_at, updated_at, last_seen_at, is_online FROM users WHERE id = ?",
+    let results = db_client.query::<(Uuid, String, String, String, CqlTimestamp, CqlTimestamp, Option<CqlTimestamp>, bool, Option<String>, Option<String> ), _>(
+        "SELECT id, username, email, password_hash, created_at, updated_at, last_seen_at, is_online, interests, language FROM users WHERE id = ?",
         Some((uuid,))
     ).await?;
 
     if let Some(row) = results.first() {
-        let (id, username, email, password_hash, created_at, updated_at, last_seen_at, is_online) = row.clone();
+        let (id, username, email, password_hash, created_at, updated_at, last_seen_at, is_online, interests, language) = row.clone();
         Ok(Some(User {
             id: id.to_string(),
             username,
@@ -91,6 +91,8 @@ pub async fn find_by_id(session: &web::Data<Session>, id: &str) -> Result<Option
             updated_at: updated_at.0,
             last_seen_at: last_seen_at.map(|ts| ts.0),
             is_online,
+            interests: interests.map(|s| s.to_string()),
+            language: language.map(|s| s.to_string()),
         }))
     } else {
         Ok(None)
@@ -157,15 +159,15 @@ pub async fn search_users(
         _phantom: PhantomData 
     };
 
-    let results = db_client.query::<(Uuid, String, String, CqlTimestamp, Option<CqlTimestamp>, bool), _>(
-        "SELECT id, username, email, created_at, last_seen_at, is_online FROM users",
+    let results = db_client.query::<(Uuid, String, String, CqlTimestamp, Option<CqlTimestamp>, bool, String, String), _>(
+        "SELECT id, username, email, created_at, last_seen_at, is_online, interests, language FROM users",
         None::<()>
     ).await?;
 
     let users = results
         .into_iter()
-        .filter(|(_, username, email, _, _, _)| username.contains(query) || email.contains(query))
-        .map(|(id, username, email, created_at, last_seen_at, is_online)| {
+        .filter(|(_, username, email, _, _, _, _, _)| username.contains(query) || email.contains(query))
+        .map(|(id, username, email, created_at, last_seen_at, is_online, interests, language)| {
             UserProfile {
                 id: id.to_string(),
                 username,
@@ -173,6 +175,8 @@ pub async fn search_users(
                 created_at: created_at.0,
                 last_seen_at: last_seen_at.map(|ts| ts.0),
                 is_online,
+                interests: Some(interests),
+                language: Some(language),
             }
         })
         .collect();
@@ -186,14 +190,14 @@ pub async fn get_all_users(session: &web::Data<Session>) -> Result<Vec<UserProfi
         _phantom: PhantomData 
     };
 
-    let results = db_client.query::<(Uuid, String, String, CqlTimestamp, Option<CqlTimestamp>, bool), _>(
-        "SELECT id, username, email, created_at, last_seen_at, is_online FROM users",
+    let results = db_client.query::<(Uuid, String, String, CqlTimestamp, Option<CqlTimestamp>, bool, Option<String>, Option<String>), _>(
+        "SELECT id, username, email, created_at, last_seen_at, is_online, interests, language FROM users",
         None::<()>
     ).await?;
 
     let users = results
         .into_iter()
-        .map(|(id, username, email, created_at, last_seen_at, is_online)| {
+        .map(|(id, username, email, created_at, last_seen_at, is_online, interests, language)| {
             UserProfile {
                 id: id.to_string(),
                 username,
@@ -201,8 +205,10 @@ pub async fn get_all_users(session: &web::Data<Session>) -> Result<Vec<UserProfi
                 created_at: created_at.0,
                 last_seen_at: last_seen_at.map(|ts| ts.0),
                 is_online,
-            }
-        })
+                interests: interests.map(|s| s.to_string()),
+                language: language.map(|s| s.to_string()),
+            }   
+        })  
         .collect();
 
     Ok(users)

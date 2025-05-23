@@ -7,6 +7,7 @@ mod conversations;
 mod utils;
 use actix_cors::Cors;
 use actix_web::{web, App, HttpServer};
+use aws_config::BehaviorVersion;
 use dotenv::dotenv;
 use env_logger::Env;
 use middleware::auth::Auth;
@@ -21,7 +22,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use std::collections::HashMap;
 use aws_sdk_s3 as s3;
-use aws_smithy_types::date_time::Format::DateTime;
+
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -35,7 +36,7 @@ async fn main() -> std::io::Result<()> {
     let access_key_id = env::var("ACCESS_KEY_ID").expect("ACCESS_KEY_ID must be set");
     let access_key_secret = env::var("ACCESS_KEY_SECRET").expect("ACCESS_KEY_SECRET must be set");
 
-    let config = aws_config::from_env()
+    let config = aws_config::defaults(BehaviorVersion::latest())
         .endpoint_url(format!("https://{}.r2.cloudflarestorage.com", account_id))
         .credentials_provider(aws_sdk_s3::config::Credentials::new(
             access_key_id,
@@ -110,6 +111,7 @@ async fn main() -> std::io::Result<()> {
                                     .route("/{id}", web::put().to(conversation_handler::update_conversation))
                                     .route("/{id}/messages", web::post().to(conversation_handler::send_message))
                                     .route("/{id}/messages", web::get().to(conversation_handler::list_messages))
+                                    .route("/{id}/customization", web::put().to(conversation_handler::update_conversation_customization))
                             )
                     )
             )

@@ -1,3 +1,5 @@
+use actix_multipart::Multipart;
+use futures_util::TryStreamExt;
 use scylla::client::session::Session;
 use serde::{Deserialize, Serialize};
 use crate::{
@@ -344,15 +346,57 @@ impl ConversationService {
         &self,
         conversation_id: &str,
         customization_json: ConversationCustomization,
+        mut multipart: Multipart,
+        s3_client: aws_sdk_s3::Client,
     ) -> Result<ConversationCustomization, AppError> {
         let conversation_uuid = Uuid::parse_str(conversation_id)
             .map_err(|e| AppError(format!("Invalid conversation ID: {}", e), StatusCode::BAD_REQUEST))?;
 
+        let mut background_image_url = customization_json.background_image_url.clone();
+
+        while let Some(mut field) = multipart.try_next().await.map_err(|e| AppError(format!("Failed to get next field: {}", e), StatusCode::INTERNAL_SERVER_ERROR))? {
+            let content_disposition = field.content_disposition();
+
+            if let Some(name) = content_disposition.unwrap().get_name() {
+                if name == "background_image" {
+                    // Extract filename for key
+                    let filename = content_disposition.unwrap().get_filename().map_or_else(
+                        || format!("{}.bin", Uuid::new_v4()),
+                        |f| f.to_string(),
+                    );
+
+                    // Buffer the file bytes
+                    let mut file_bytes = Vec::new();
+                    while let Some(chunk) = field.try_next().await.map_err(|e| AppError(format!("Failed to get next chunk: {}", e), StatusCode::INTERNAL_SERVER_ERROR))? {
+                        file_bytes.extend_from_slice(&chunk);
+                    }
+
+                    // 2. Upload to Cloudflare R2
+                    let bucket = std::env::var("R2_BUCKET").map_err(|_| AppError("R2_BUCKET not set".into(), StatusCode::INTERNAL_SERVER_ERROR))?;
+
+                    // Use the filename (or generate key) as object key in R2
+                    s3_client.put_object()
+                        .bucket(bucket)
+                        .key(&filename)
+                        .body(aws_sdk_s3::primitives::ByteStream::from(file_bytes))
+                        .send()
+                        .await
+                        .map_err(|e| AppError(format!("Failed to upload to R2: {}", e), StatusCode::INTERNAL_SERVER_ERROR))?;
+
+                    // 3. Construct the public URL for the uploaded file
+                    let account_id = std::env::var("R2_ACCOUNT_ID").unwrap_or_default();
+                    let endpoint = format!("https://{}.r2.cloudflarestorage.com", account_id);
+                    background_image_url = Some(format!("{}/{}", endpoint, filename));
+                }
+            }
+        }
+
+        // 4. Update DB with the new background_image_url and other customization fields
         let db_client = DbClient::<ConversationCustomization> { 
             session: &self.session, 
             _phantom: PhantomData 
         };
-        
+
         let existing = db_client.query::<(Option<String>, Option<String>, Option<String>, Option<String>, Option<String>), _>(
             "SELECT background_image_url, primary_message_color, secondary_message_color, text_color_primary, text_color_secondary FROM conversation_customization WHERE conversation_id = ?",
             Some((conversation_uuid,))
@@ -363,7 +407,7 @@ impl ConversationService {
                 "INSERT INTO conversation_customization (conversation_id, background_image_url, primary_message_color, secondary_message_color, text_color_primary, text_color_secondary) VALUES (?, ?, ?, ?, ?, ?)",
                 (
                     conversation_uuid,
-                    &customization_json.background_image_url,
+                    &background_image_url,
                     &customization_json.primary_message_color,
                     &customization_json.secondary_message_color,
                     &customization_json.text_color_primary,
@@ -374,7 +418,7 @@ impl ConversationService {
             db_client.insert(
                 "UPDATE conversation_customization SET background_image_url = ?, primary_message_color = ?, secondary_message_color = ?, text_color_primary = ?, text_color_secondary = ? WHERE conversation_id = ?",
                 (
-                    &customization_json.background_image_url,
+                    &background_image_url,
                     &customization_json.primary_message_color,
                     &customization_json.secondary_message_color,
                     &customization_json.text_color_primary,
@@ -384,6 +428,15 @@ impl ConversationService {
             ).await?;
         }
 
-        Ok(customization_json)
+        // Return updated customization with the new background_image_url
+        let updated_customization = ConversationCustomization {
+            background_image_url,
+            primary_message_color: customization_json.primary_message_color,
+            secondary_message_color: customization_json.secondary_message_color,
+            text_color_primary: customization_json.text_color_primary,
+            text_color_secondary: customization_json.text_color_secondary,
+        };
+
+        Ok(updated_customization)
     }
 }

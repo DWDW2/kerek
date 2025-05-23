@@ -40,4 +40,4 @@ jobs:
             chmod 600 ./frontend/.env ./api/.env
 
             cd ./kerek
-            docker-compose up -d --build
+            docker compose up -d --build

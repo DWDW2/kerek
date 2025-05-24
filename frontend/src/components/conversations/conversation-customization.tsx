@@ -103,7 +103,7 @@ export function ConversationCustomization({
       };
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/conversations/${conversationId}/customization`,
+        `/api/conversations/${conversationId}/customization`,
         {
           method: "POST",
           headers: {

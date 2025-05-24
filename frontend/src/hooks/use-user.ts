@@ -18,14 +18,11 @@ export function useUser(id: string): UseUserResult {
       setError(null);
 
       try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/users/profile/${id}`,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
-            },
-          }
-        );
+        const response = await fetch(`/api/users/profile/${id}`, {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+          },
+        });
 
         if (!response.ok) {
           throw new Error(`Failed to fetch user: ${response.statusText}`);

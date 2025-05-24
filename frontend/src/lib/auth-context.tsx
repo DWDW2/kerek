@@ -43,14 +43,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchUserProfile = async (authToken: string) => {
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/users/me`,
-        {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
-        }
-      );
+      const response = await fetch("/api/users/me", {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
+      });
 
       if (!response.ok) {
         throw new Error("Failed to fetch user profile");
@@ -130,7 +127,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     try {
       if (token && user) {
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/logout`, {
+        await fetch("/api/auth/logout", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

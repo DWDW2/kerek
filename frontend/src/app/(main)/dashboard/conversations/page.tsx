@@ -37,31 +37,28 @@ export default function ConversationsPage() {
 
   const createConversation = async (targetUser: NodeData) => {
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/conversations`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
-          },
-          body: JSON.stringify({
-            participant_ids: [user?.id, targetUser.id],
-            is_group: false,
-            name: `${
-              user?.username +
-              `'s` +
-              " " +
-              "and" +
-              " " +
-              targetUser.name +
-              `'s` +
-              " " +
-              "conversation"
-            }`,
-          }),
-        }
-      );
+      const response = await fetch("/api/conversations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+        },
+        body: JSON.stringify({
+          participant_ids: [user?.id, targetUser.id],
+          is_group: false,
+          name: `${
+            user?.username +
+            `'s` +
+            " " +
+            "and" +
+            " " +
+            targetUser.name +
+            `'s` +
+            " " +
+            "conversation"
+          }`,
+        }),
+      });
 
       if (!response.ok) {
         throw new Error("Failed to create conversation");
@@ -79,14 +76,11 @@ export default function ConversationsPage() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/users`,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
-            },
-          }
-        );
+        const response = await fetch("/api/users", {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+          },
+        });
         if (!response.ok) {
           throw new Error("Failed to fetch users");
         }

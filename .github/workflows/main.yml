@@ -21,8 +21,9 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ./kerek
+            git pull
             cat > ./frontend/.env <<EOF
-            NEXT_PUBLIC_API_URL=https://kerek.club:8080/api
+            NEXT_PUBLIC_API_URL=https://kerek.club/api
             API_URL=http://rust-backend:8080/api
             NEXT_PUBLIC_GIPHY_API_KEY=${{ secrets.NEXT_PUBLIC_GIPHY_API_KEY }}
             CLOUDFLARE_R2_ACCESS_KEY_ID=${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}

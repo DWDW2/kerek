@@ -16,7 +16,7 @@ export function useMessages(id: string) {
       setIsLoading(true);
       try {
         const response = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL}/conversations/${id}/messages?limit=20`,
+          `/api/conversations/${id}/messages?limit=20`,
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
@@ -45,9 +45,7 @@ export function useMessages(id: string) {
     try {
       const oldest = messages[0];
       const response = await fetch(
-        `${
-          process.env.NEXT_PUBLIC_API_URL
-        }/conversations/${id}/messages?limit=20&before=${encodeURIComponent(
+        `/api/conversations/${id}/messages?limit=20&before=${encodeURIComponent(
           oldest.created_at
         )}`,
         {

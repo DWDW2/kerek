@@ -98,12 +98,6 @@ pub async fn echo(
         }
     });
 
-    // if room.senders.contains_key(&user_id) {
-    //     warn!("User {} is already connected to conversation {}. Rejecting duplicate connection.", user_id, conversation_id);
-    //     drop(store);
-    //     return Ok(HttpResponse::Forbidden().finish());
-    // }
-
     room.senders.entry(user_id.clone()).or_default().push(tx);
     info!("User {} added to senders for conversation {}", user_id, conversation_id);
 

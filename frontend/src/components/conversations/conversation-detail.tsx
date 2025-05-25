@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,12 +6,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/lib/auth-context";
 import { useMessages } from "@/hooks/use-messages";
 import { Message } from "@/types/conversation";
-import { ConversationCustomization as CustomizationType } from "@/types/conversation";
 import { useConversation } from "@/hooks/use-conversation";
 import ConversationHeader from "./conversation-header";
 import MessageList from "./message-list";
 import MessageInput from "./message-input";
 import { ConversationCustomization } from "./conversation-customization";
+import { GameLauncher } from "@/components/game/game-launcher";
 import { useUser } from "@/hooks/use-user";
 import Link from "next/link";
 import { ArrowLeftIcon } from "lucide-react";
@@ -208,11 +207,12 @@ export function ConversationDetail() {
           <ArrowLeftIcon />
         </Link>
         <ConversationHeader reciever={reciever!} />
-        <div className="ml-auto">
+        <div className="ml-auto flex flex-row gap-2">
           <ConversationCustomization
             conversationId={conversationId as string}
             currentCustomization={conversation.customization}
           />
+          <GameLauncher conversationId={conversationId as string} />
         </div>
       </CardHeader>
       <CardContent className="flex-1 flex flex-col p-0">

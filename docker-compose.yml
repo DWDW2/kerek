@@ -36,6 +36,15 @@ services:
       - CASSANDRA_CLUSTER_NAME=MyCluster
       - CASSANDRA_DC=DC1
       - CASSANDRA_RACK=Rack1
-
+  game:
+    build:
+      context: ./game
+      dockerfile: Dockerfile
+    container_name: game-server
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - NODE_ENV=production
 volumes:
   cassandra-data:

@@ -8,7 +8,8 @@ What I want to see in my app? Features that are not present in many apps:
 ## Tasks
 
 - [ ] Fixing timestamps
-- [ ] Create functions / utilities to simplify building apis in rust.
+- [x] Create functions / utilities to simplify building apis in rust.
 - [ ] Create AI search function.
 - [ ] Create connections using graph.
 - [x] deploy project
+- [ ] Create mini games

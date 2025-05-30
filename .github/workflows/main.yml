@@ -21,6 +21,8 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ./kerek
+            git checkout main
+            git fetch
             git pull
             cat > ./frontend/.env <<EOF
             NEXT_PUBLIC_API_URL=https://kerek.club/api
@@ -35,9 +37,10 @@ jobs:
             EOF
             cd ./api
             cat > ./api/.env <<EOF
-            HOST=127.0.0.1
+            HOST=0.0.0.0
             PORT=8080
             JWT_SECRET=${{ secrets.JWT_SECRET }}
+            CASSANDRA_HOST=cassandra-db:9042
             EOF
             chmod 600 ./frontend/.env ./api/.env
 

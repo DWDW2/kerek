@@ -1,4 +1,3 @@
-use actix_multipart::Multipart;
 use futures_util::TryStreamExt;
 use scylla::client::session::Session;
 use serde::{Deserialize, Serialize};
@@ -17,7 +16,6 @@ use actix_web::web;
 use std::time::{SystemTime, UNIX_EPOCH};
 use scylla::value::CqlTimeuuid;
 use std::marker::PhantomData;
-use aws_sdk_s3 as s3;
 pub struct ConversationService {
     session: web::Data<Session>,
 }

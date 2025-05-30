@@ -35,6 +35,8 @@ jobs:
             CLOUDFLARE_R2_ENDPOINT=${{ secrets.CLOUDFLARE_R2_ENDPOINT }}
             NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL=${{ secrets.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_URL }}
             EOF
+            chmod 600 ./frontend/.env
+            cd ..
             cd ./api
             cat > ./api/.env <<EOF
             HOST=0.0.0.0
@@ -42,7 +44,7 @@ jobs:
             JWT_SECRET=${{ secrets.JWT_SECRET }}
             CASSANDRA_HOST=cassandra-db:9042
             EOF
-            chmod 600 ./frontend/.env ./api/.env
+            chmod 600 ./api/.env
 
             cd ./kerek
             docker compose up -d --build

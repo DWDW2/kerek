@@ -5,6 +5,8 @@ import { User } from "@/types/user";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import MessagesSidebar from "@/components/conversations/messages-sidebar";
+import { Conversation } from "@/types/conversation";
 
 interface NodeData {
   id: string;
@@ -34,7 +36,7 @@ export default function ConversationsPage() {
   const { user } = useAuth();
   const router = useRouter();
   const graphRef = useRef<ForceGraphMethods | null>(null);
-
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const createConversation = async (targetUser: NodeData) => {
     try {
       const response = await fetch("/api/conversations", {
@@ -122,7 +124,18 @@ export default function ConversationsPage() {
 
     return () => clearInterval(intervalId);
   }, [user?.id]);
-
+  useEffect(() => {
+    const fetchConversations = async () => {
+      const response = await fetch("/api/conversations", {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+        },
+      });
+      const data: Conversation[] = await response.json();
+      setConversations(data);
+    };
+    fetchConversations();
+  }, []);
   useEffect(() => {
     const handleResize = () => {
       if (graphRef.current) {
@@ -137,27 +150,32 @@ export default function ConversationsPage() {
   }, []);
 
   return (
-    <div className="p-4 h-full flex flex-col">
-      <div className="font-bold text-xl">Explore Neighborhood</div>
-      <div style={{ maxWidth: "none", overflow: "hidden" }}>
-        {graphData.nodes.length > 0 && (
-          <ForceGraph2D
-            graphData={graphData}
-            nodeLabel="name"
-            nodeColor="color"
-            nodeRelSize={6}
-            linkWidth={1}
-            linkColor={() => "#E0E0E0"}
-            cooldownTime={3000}
-            onNodeClick={(node) => {
-              const clickedNode = node as NodeData;
-              if (clickedNode.id !== user?.id) {
-                createConversation(clickedNode);
-              }
-            }}
-          />
-        )}
+    <section className="flex flex-row h-full">
+      <div className="flex-1 p-4 h-full flex flex-col">
+        <div className="font-bold text-xl">Explore Neighborhood</div>
+        <div className="flex-1 relative h-fit w-fit">
+          {graphData.nodes.length > 0 && (
+            <ForceGraph2D
+              graphData={graphData}
+              nodeLabel="name"
+              nodeColor="color"
+              nodeRelSize={6}
+              linkWidth={1}
+              linkColor={() => "#E0E0E0"}
+              cooldownTime={3000}
+              width={window.innerWidth * 0.6}
+              height={window.innerHeight}
+              onNodeClick={(node) => {
+                const clickedNode = node as NodeData;
+                if (clickedNode.id !== user?.id) {
+                  createConversation(clickedNode);
+                }
+              }}
+            />
+          )}
+        </div>
       </div>
-    </div>
+      <MessagesSidebar conversations={conversations} />
+    </section>
   );
 }

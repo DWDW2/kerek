@@ -1,40 +1,177 @@
 import { useState, useEffect, useCallback } from "react";
 import { Conversation } from "@/types/conversation";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
-export function useConversation(id: string) {
+interface CreateConversationPayload {
+  participant_ids: string[];
+  is_group: boolean;
+  name: string;
+}
+
+export function useConversation(conversationId?: string) {
+  const router = useRouter();
   const [conversation, setConversation] = useState<Conversation | null>(null);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  console.log(conversation);
+  const [isCreating, setIsCreating] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const loadConversation = useCallback(async () => {
+    if (!conversationId) {
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const response = await fetch(`/api/conversations/${id}`, {
+      setError(null);
+      const token = localStorage.getItem("auth_token");
+      if (!token) {
+        throw new Error("No authentication token found");
+      }
+
+      const response = await fetch(`/api/conversations/${conversationId}`, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+          Authorization: `Bearer ${token}`,
         },
       });
-      if (!response.ok) throw new Error("Failed to load conversation");
+
+      if (!response.ok) {
+        throw new Error(`Failed to load conversation: ${response.status}`);
+      }
+
       const data = await response.json();
       setConversation(data);
     } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to load conversation";
       console.error("Failed to load conversation details:", error);
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsLoading(false);
     }
-  }, [id]);
+  }, [conversationId]);
 
   useEffect(() => {
-    if (id) {
+    if (conversationId) {
       loadConversation();
+    } else {
+      setIsLoading(false);
+      setConversation(null);
     }
-  }, [id, loadConversation]);
+  }, [conversationId, loadConversation]);
 
   const refetch = useCallback(() => {
-    if (id) {
+    if (conversationId) {
       setIsLoading(true);
       loadConversation();
     }
-  }, [id, loadConversation]);
+  }, [conversationId, loadConversation]);
 
-  return { conversation, isLoading, refetch };
+  const createConversation = useCallback(
+    async (payload: CreateConversationPayload) => {
+      try {
+        setIsCreating(true);
+        setError(null);
+
+        const token = localStorage.getItem("auth_token");
+        if (!token) {
+          throw new Error("No authentication token found");
+        }
+
+        const response = await fetch("/api/conversations", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            participant_ids: payload.participant_ids,
+            is_group: payload.is_group,
+            name: payload.name,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to create conversation: ${response.status}`);
+        }
+
+        const conversation = await response.json();
+
+        setConversations((prev) => [conversation, ...prev]);
+
+        router.push(`/dashboard/conversations/${conversation.id}`);
+        toast.success("Conversation created successfully");
+
+        return conversation;
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error
+            ? error.message
+            : "Failed to create conversation";
+        console.error("Error creating conversation:", error);
+        setError(errorMessage);
+        toast.error(errorMessage);
+        throw error;
+      } finally {
+        setIsCreating(false);
+      }
+    },
+    [router]
+  );
+
+  const fetchConversations = useCallback(async () => {
+    try {
+      setIsFetching(true);
+      setError(null);
+
+      const token = localStorage.getItem("auth_token");
+      if (!token) {
+        throw new Error("No authentication token found");
+      }
+
+      const response = await fetch("/api/conversations", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch conversations: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setConversations(data);
+      return data;
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to fetch conversations";
+      console.error("Error fetching conversations:", error);
+      setError(errorMessage);
+      toast.error(errorMessage);
+      throw error;
+    } finally {
+      setIsFetching(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchConversations();
+  }, [fetchConversations]);
+
+  return {
+    conversation,
+    conversations,
+    error,
+    isLoading,
+    isCreating,
+    isFetching,
+    refetch,
+    createConversation,
+  };
 }

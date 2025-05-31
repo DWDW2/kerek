@@ -1,6 +1,7 @@
 import React from "react";
 import { Conversation } from "@/types/conversation";
 import { Card, CardTitle, CardHeader, CardContent } from "../ui/card";
+import Link from "next/link";
 type Props = {
   conversations: Conversation[];
 };
@@ -12,11 +13,19 @@ export default function MessagesSidebar({ conversations }: Props) {
         <CardTitle>Messages</CardTitle>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="flex flex-col gap-2 min-w-[200px] min-h-screen ">
+        <div className="flex flex-col gap-2 min-w-[200px] min-h-screen">
           {conversations.map((conversation) => (
-            <div key={conversation.id} className="rounded-md p-4 border w-full">
-              {conversation.name}
-            </div>
+            <Link
+              href={`/dashboard/conversations/${conversation.id}`}
+              key={conversation.id}
+            >
+              <div
+                key={conversation.id}
+                className="p-4 border w-full cursor-pointer"
+              >
+                {conversation.name}
+              </div>
+            </Link>
           ))}
         </div>
       </CardContent>

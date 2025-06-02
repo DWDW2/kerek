@@ -6,4 +6,9 @@ export interface User {
   updated_at: number;
   last_seen_at: number | null;
   is_online: boolean;
+  interests?: string;
+  language?: string;
+  profile_image_url?: string;
+  home_country?: string;
+  project_building?: string;
 }

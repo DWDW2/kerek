@@ -15,6 +15,9 @@ pub struct User {
     pub is_online: bool,
     pub interests: Option<String>,
     pub language: Option<String>,
+    pub profile_image_url: Option<String>,
+    pub home_country: Option<String>,
+    pub project_building: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -24,6 +27,9 @@ pub struct NewUser {
     pub password: String,
     pub interests: Option<String>,
     pub language: Option<String>,
+    pub profile_image_url: Option<String>,
+    pub home_country: Option<String>,
+    pub project_building: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -45,6 +51,9 @@ pub struct UpdateProfileRequest {
     pub password: Option<String>,
     pub interests: Option<String>,
     pub language: Option<String>,
+    pub profile_image_url: Option<String>,
+    pub home_country: Option<String>,
+    pub project_building: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -57,10 +66,23 @@ pub struct UserProfile {
     pub is_online: bool,
     pub interests: Option<String>,
     pub language: Option<String>,
+    pub profile_image_url: Option<String>,
+    pub home_country: Option<String>,
+    pub project_building: Option<String>,
 }
 
 impl User {
-    pub fn new(id: String, username: String, email: String, password_hash: String, interests: Option<String>, language: Option<String>) -> Self {
+    pub fn new(
+        id: String, 
+        username: String, 
+        email: String, 
+        password_hash: String, 
+        interests: Option<String>, 
+        language: Option<String>,
+        profile_image_url: Option<String>,
+        home_country: Option<String>,
+        project_building: Option<String>
+    ) -> Self {
         let now = Utc::now().timestamp();
         Self {
             id,
@@ -73,6 +95,9 @@ impl User {
             is_online: false,
             interests: Some(interests.unwrap_or("".to_string())),
             language: Some(language.unwrap_or("".to_string())),
+            profile_image_url,
+            home_country,
+            project_building,
         }
     }
 
@@ -86,6 +111,9 @@ impl User {
             is_online: self.is_online,
             interests: self.interests.clone(),
             language: self.language.clone(),
+            profile_image_url: self.profile_image_url.clone(),
+            home_country: self.home_country.clone(),
+            project_building: self.project_building.clone(),
         }
     }
 }

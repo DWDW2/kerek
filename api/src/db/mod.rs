@@ -54,7 +54,10 @@ pub async fn setup_database(session: &web::Data<Session>, new: bool) -> Result<(
             last_seen_at TIMESTAMP,
             is_online BOOLEAN,
             interests TEXT,
-            language TEXT
+            language TEXT,
+            profile_image_url TEXT,
+            home_country TEXT,
+            project_building TEXT
         )",
         &[]
     ).await?;

@@ -25,7 +25,7 @@ use std::collections::HashMap;
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
-    env_logger::init_from_env(Env::default().default_filter_or("info"));
+    env_logger::init_from_env(Env::default().default_filter_or("debug"));
 
     let session = db::connect().await.unwrap();
     let session_data = web::Data::new(session);
@@ -77,7 +77,7 @@ async fn main() -> std::io::Result<()> {
                                 web::scope("/users")
                                     .route("/me", web::get().to(user_handler::get_me))
                                     .route("/profile/{id}", web::get().to(user_handler::get_profile))
-                                    .route("/profile/{id}", web::put().to(user_handler::update_profile))
+                                    .route("/profile", web::put().to(user_handler::update_profile))
                                     .route("/profile/search", web::get().to(user_handler::search_users))
                                     .route("", web::get().to(user_handler::get_all_users))
                                     .route("/online", web::post().to(user_handler::set_user_online))

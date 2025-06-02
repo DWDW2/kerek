@@ -6,6 +6,7 @@ use scylla::client::session::Session;
 use serde_json::json;
 use crate::error::AppError;
 use crate::models::user::{NewUser, LoginRequest, AuthResponse, UpdateProfileRequest};
+use crate::utils::jwt::get_user_id_from_token;
 use serde::{Serialize, Deserialize};
 use crate::users::service;
 
@@ -72,22 +73,12 @@ pub async fn get_profile(
 
 pub async fn update_profile(
     session: web::Data<Session>,
-    user_id: web::Json<UserId>,
+    req: HttpRequest,
     update_data: web::Json<UpdateProfileRequest>,
 ) -> Result<impl Responder, AppError> {
-    let user = service::find_by_id(&session, &user_id.id).await?
-        .ok_or_else(|| AppError("User not found".to_string(), actix_web::http::StatusCode::NOT_FOUND))?;
-
-    let updated_user = NewUser {
-        username: update_data.username.clone().unwrap_or(user.username),
-        email: update_data.email.clone().unwrap_or(user.email),
-        password: update_data.password.clone().unwrap_or(user.password_hash),
-        interests: Some(update_data.interests.clone().unwrap_or("".to_string())),
-        language: Some(update_data.language.clone().unwrap_or("".to_string()))
-    };
-
-    let updated = service::update_user(&session, &user.id, updated_user).await?;
-
+    let user_id = get_user_id_from_token(&req)?;
+    let updated = service::update_profile(&session, &user_id, update_data.into_inner()).await?;
+    log::debug!("Updated user: {:?}", updated);
     Ok(HttpResponse::Ok().json(updated.to_profile()))
 }
 

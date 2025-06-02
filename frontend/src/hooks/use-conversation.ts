@@ -100,11 +100,8 @@ export function useConversation(conversationId?: string) {
 
         const conversation = await response.json();
 
-        setConversations((prev) => [conversation, ...prev]);
-
         router.push(`/dashboard/conversations/${conversation.id}`);
         toast.success("Conversation created successfully");
-
         return conversation;
       } catch (error) {
         const errorMessage =

@@ -19,7 +19,8 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@/packages/*": ["./packages/*"]
     }
   },
   "include": ["ne xt-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

@@ -1,5 +1,5 @@
 import React from "react";
-import { listConversations } from "@/server/conversations";
+import { listConversations } from "@/packages/api/conversations";
 import { DashboardClient } from "./dashboard-client";
 
 interface Conversation {

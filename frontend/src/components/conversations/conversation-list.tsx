@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Conversation } from "@/types/conversation";
-import { listConversations } from "@/server/conversations";
+import { listConversations } from "../../../packages/api/conversations";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useRouter } from "next/navigation";

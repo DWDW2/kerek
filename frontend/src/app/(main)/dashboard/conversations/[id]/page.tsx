@@ -1,4 +1,4 @@
-import { getConversation } from "@/server/conversations";
+import { getConversation } from "../../../../../../packages/api/conversations";
 import { ConversationDetail } from "@/components/conversations/conversation-detail";
 import { notFound } from "next/navigation";
 

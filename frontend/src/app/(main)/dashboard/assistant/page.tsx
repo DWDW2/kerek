@@ -1,6 +1,6 @@
 import React from "react";
 import { AssistantClient } from "./assistant-client";
-import { listConversations } from "@/server/conversations";
+import { listConversations } from "../../../../../packages/api/conversations";
 
 interface Conversation {
   id: string;

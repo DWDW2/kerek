@@ -78,13 +78,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
-      <SidebarHeader className="border-b border p-6 relative overflow-hidden bg-gradient-to-r from-primary/50 via-primary/60 to-primary/50">
-        <div className="mb-4">
+      <SidebarHeader className="p-4 relative overflow-hidden">
+        <>
           <Link href="/">
             <h2 className="text-xl font-semibold text-black mb-1">Kerek</h2>
           </Link>
           <div className="w-6 h-0.5 bg-black rounded-full"></div>
-        </div>
+        </>
       </SidebarHeader>
 
       <SidebarContent className="px-3 py-4">

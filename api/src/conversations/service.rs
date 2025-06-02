@@ -79,9 +79,9 @@ impl ConversationService {
             "INSERT INTO conversations (conversation_id, title, created_at, updated_at, one_to_one_key) VALUES (?, ?, ?, ?, ?)",
             (
                 conversation_id,
-                &new_conversation.name,
-                CqlTimestamp(now),
-                CqlTimestamp(now),
+                &new_conversation.name, 
+                CqlTimestamp(now * 1000),
+                CqlTimestamp(now * 1000),
                 one_to_one_key.as_deref(),
             )
         ).await?;
@@ -95,12 +95,12 @@ impl ConversationService {
     
         db_client.insert(
             "INSERT INTO conversation_participants (conversation_id, user_id, joined_at) VALUES (?, ?, ?)",
-            (conversation_id, creator_uuid, CqlTimestamp(now))
+            (conversation_id, creator_uuid, CqlTimestamp(now * 1000))
         ).await?;
     
         db_client.insert(
             "INSERT INTO user_conversations (user_id, conversation_id, joined_at) VALUES (?, ?, ?)",
-            (creator_uuid, conversation_id, CqlTimestamp(now))
+            (creator_uuid, conversation_id, CqlTimestamp(now * 1000))
         ).await?;
     
         for participant_id in new_conversation.participant_ids {
@@ -110,12 +110,12 @@ impl ConversationService {
                 
                 db_client.insert(
                     "INSERT INTO conversation_participants (conversation_id, user_id, joined_at) VALUES (?, ?, ?)",
-                    (conversation_id, participant_uuid, CqlTimestamp(now))
+                    (conversation_id, participant_uuid, CqlTimestamp(now * 1000))
                 ).await?;
     
                 db_client.insert(
                     "INSERT INTO user_conversations (user_id, conversation_id, joined_at) VALUES (?, ?, ?)",
-                    (participant_uuid, conversation_id, CqlTimestamp(now))
+                    (participant_uuid, conversation_id, CqlTimestamp(now * 1000))
                 ).await?;
             }
         }
@@ -281,7 +281,7 @@ impl ConversationService {
 
         db_client.insert(
             "UPDATE conversations SET title = ?, updated_at = ? WHERE conversation_id = ?",
-            (name.clone(), CqlTimestamp(now), conversation_id)
+            (name.clone(), CqlTimestamp(now * 1000), conversation_id)
         ).await?;
 
         self.get_conversation(id).await

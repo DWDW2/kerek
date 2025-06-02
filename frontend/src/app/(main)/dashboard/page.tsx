@@ -1,6 +1,6 @@
 import React from "react";
 import { listConversations } from "@/packages/api/conversations";
-import { DashboardClient } from "./dashboard-client";
+import { DashboardClient } from "@/components/dashboard/dashboard-client";
 
 interface Conversation {
   id: string;

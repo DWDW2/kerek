@@ -109,7 +109,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     <Icon
                       className={cn(
                         "h-4 w-4 transition-all duration-300",
-                        isActive ? "text-primary" : "group-hover:text-primary"
+                        isActive && "text-primary"
                       )}
                     />
                     <span className="transition-all duration-300">

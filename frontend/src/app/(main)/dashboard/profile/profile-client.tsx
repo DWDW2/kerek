@@ -95,8 +95,8 @@ export function ProfileClient({ getProfileData }: ProfileClientProps) {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-6 space-y-6 ">
+      <div className="md:items-center justify-between flex flex-col md:flex-row items-start gap-4">
         <div className="flex items-center gap-6">
           <Avatar className="h-24 w-24 border-4 border-border">
             <AvatarImage
@@ -126,7 +126,7 @@ export function ProfileClient({ getProfileData }: ProfileClientProps) {
             </div>
           </div>
         </div>
-        <Button onClick={() => setIsEditMode(true)} className="gap-2">
+        <Button onClick={() => setIsEditMode(true)} className="gap-2" size="sm">
           <Edit className="h-4 w-4" />
           Edit Profile
         </Button>

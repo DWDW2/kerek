@@ -1,6 +1,6 @@
 import React from "react";
 import { ProfileClient } from "./profile-client";
-import { listConversations } from "../../../../../packages/api/conversations";
+import { listConversations } from "@/packages/api/conversations";
 
 interface Conversation {
   id: string;
@@ -44,7 +44,7 @@ async function getProfileData(token: string) {
     daysActive,
     avgMessagesPerDay,
     conversationsByMonth: conversations.reduce((acc, conv) => {
-      const month = new Date(conv.created_at).toLocaleString("default", {
+      const month = new Date(conv.created_at).toLocaleString("en-US", {
         month: "long",
       });
       acc[month] = (acc[month] || 0) + 1;

@@ -1,10 +1,12 @@
 "use client";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useRef } from "react";
 import ForceGraph2D, { ForceGraphMethods } from "react-force-graph-2d";
 import { useAuth } from "@/lib/auth-context";
 import MessagesSidebar from "@/components/conversations/messages-sidebar";
 import { useConversation } from "@/hooks/use-conversation";
 import { useUser } from "@/hooks/use-user";
+import { useResizePanels } from "@/hooks/use-resize-panels";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface NodeData {
   id: string;
@@ -39,16 +41,22 @@ export default function ConversationsPage() {
     nodes: [],
     links: [],
   });
-  const [leftWidth, setLeftWidth] = useState(60);
-  const [isResizing, setIsResizing] = useState(false);
   const [selectedNode, setSelectedNode] = useState<NodeData | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
-
+  const isMobile = useIsMobile();
   const { user } = useAuth();
   const graphRef = useRef<ForceGraphMethods | undefined>(undefined);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const { createConversation, conversations } = useConversation();
   const { users, isFetchingUsers } = useUser();
+
+  const { leftWidth, rightWidth, isResizing, handleMouseDown } =
+    useResizePanels({
+      containerRef,
+      initialLeftWidth: 60,
+      minWidth: 20,
+      maxWidth: 80,
+    });
 
   useEffect(() => {
     if (user) {
@@ -87,45 +95,6 @@ export default function ConversationsPage() {
     }
   }, [user, users]);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsResizing(true);
-  }, []);
-
-  const handleMouseMove = useCallback(
-    (e: MouseEvent) => {
-      if (!isResizing || !containerRef.current) return;
-
-      const containerRect = containerRef.current.getBoundingClientRect();
-      const newLeftWidth =
-        ((e.clientX - containerRect.left) / containerRect.width) * 100;
-
-      const constrainedWidth = Math.max(20, Math.min(80, newLeftWidth));
-      setLeftWidth(constrainedWidth);
-    },
-    [isResizing]
-  );
-
-  const handleMouseUp = useCallback(() => {
-    setIsResizing(false);
-  }, []);
-
-  useEffect(() => {
-    if (isResizing) {
-      document.addEventListener("mousemove", handleMouseMove);
-      document.addEventListener("mouseup", handleMouseUp);
-      document.body.style.cursor = "col-resize";
-      document.body.style.userSelect = "none";
-    }
-
-    return () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-      document.body.style.cursor = "";
-      document.body.style.userSelect = "";
-    };
-  }, [isResizing, handleMouseMove, handleMouseUp]);
-
   useEffect(() => {
     const handleMouseMoveForTooltip = (event: MouseEvent) => {
       setTooltipPos({ x: event.clientX, y: event.clientY });
@@ -156,7 +125,6 @@ export default function ConversationsPage() {
     return () => window.removeEventListener("resize", handleResize);
   }, [leftWidth]);
 
-  const rightWidth = 100 - leftWidth;
   const containerWidth = containerRef.current?.clientWidth || window.innerWidth;
   const graphWidth = (containerWidth * leftWidth) / 100 - 32;
 
@@ -241,7 +209,7 @@ export default function ConversationsPage() {
               style={{
                 left: tooltipPos.x + 10,
                 top: tooltipPos.y - 10,
-                transform: "translate(0, -100%)",
+                transform: "translate(-200%, -100%)",
               }}
             >
               <div className="flex items-center gap-3 mb-3">
@@ -317,24 +285,27 @@ export default function ConversationsPage() {
           )}
         </div>
       </div>
+      {!isMobile && (
+        <>
+          <div
+            className={`w-1 bg-gray-200 hover:bg-gray-300 cursor-col-resize relative group transition-colors duration-200 ${
+              isResizing ? "bg-blue-400" : ""
+            }`}
+            onMouseDown={handleMouseDown}
+          >
+            <div className="absolute inset-y-0 -left-1 -right-1 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              <div className="w-1 h-8 bg-accent rounded-full"></div>
+            </div>
+          </div>
 
-      <div
-        className={`w-1 bg-gray-200 hover:bg-gray-300 cursor-col-resize relative group transition-colors duration-200 ${
-          isResizing ? "bg-blue-400" : ""
-        }`}
-        onMouseDown={handleMouseDown}
-      >
-        <div className="absolute inset-y-0 -left-1 -right-1 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-          <div className="w-1 h-8 bg-accent rounded-full"></div>
-        </div>
-      </div>
-
-      <div
-        className="h-full transition-all duration-150 ease-out"
-        style={{ width: `${rightWidth}%` }}
-      >
-        <MessagesSidebar conversations={conversations} />
-      </div>
+          <div
+            className="h-full transition-all duration-150 ease-out"
+            style={{ width: `${rightWidth}%` }}
+          >
+            <MessagesSidebar conversations={conversations} />
+          </div>
+        </>
+      )}
     </section>
   );
 }

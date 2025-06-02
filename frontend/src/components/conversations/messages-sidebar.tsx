@@ -59,30 +59,28 @@ function ConversationItem({ conversation }: { conversation: Conversation }) {
 
 export default function MessagesSidebar({ conversations }: Props) {
   return (
-    <Card className="h-full">
-      <CardHeader className="border-b">
+    <Card className="h-full rounded-none space-y-0">
+      <CardHeader className="border-b m-0">
         <CardTitle className="text-lg">Messages</CardTitle>
       </CardHeader>
-      <CardContent className="p-0">
-        <div className="flex flex-col min-h-screen">
-          {conversations.length === 0 ? (
-            <div className="flex flex-col items-center justify-center p-8 text-center">
-              <div className="text-muted-foreground mb-2">
-                No conversations yet
-              </div>
-              <div className="text-sm text-muted-foreground">
-                Start a conversation by clicking on a user in the graph
-              </div>
+      <CardContent className="flex flex-col min-h-screen p-0">
+        {conversations.length === 0 ? (
+          <div className="flex flex-col items-center justify-center p-8 text-center">
+            <div className="text-muted-foreground mb-2">
+              No conversations yet
             </div>
-          ) : (
-            conversations.map((conversation) => (
-              <ConversationItem
-                key={conversation.id}
-                conversation={conversation}
-              />
-            ))
-          )}
-        </div>
+            <div className="text-sm text-muted-foreground">
+              Start a conversation by clicking on a user in the graph
+            </div>
+          </div>
+        ) : (
+          conversations.map((conversation) => (
+            <ConversationItem
+              key={conversation.id}
+              conversation={conversation}
+            />
+          ))
+        )}
       </CardContent>
     </Card>
   );

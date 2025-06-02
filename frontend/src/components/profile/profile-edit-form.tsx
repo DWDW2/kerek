@@ -156,16 +156,13 @@ export function ProfileEditForm({
         <CardTitle className="flex items-center gap-2">Edit Profile</CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Profile Image Upload */}
-          <div className="flex justify-center">
-            <ProfileImageUpload
-              currentImageUrl={formData.profile_image_url}
-              onImageUploaded={handleImageUploaded}
-            />
-          </div>
-
-          {/* Basic Information */}
+        <div className="flex justify-center">
+          <ProfileImageUpload
+            currentImageUrl={formData.profile_image_url}
+            onImageUploaded={handleImageUploaded}
+          />
+        </div>
+        <form className="space-y-6" onSubmit={handleSubmit}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="username">Username</Label>
@@ -189,7 +186,6 @@ export function ProfileEditForm({
             </div>
           </div>
 
-          {/* Language and Country */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Language</Label>
@@ -232,7 +228,6 @@ export function ProfileEditForm({
             </div>
           </div>
 
-          {/* Project Building */}
           <div className="space-y-2">
             <Label htmlFor="project_building">Project Building</Label>
             <Input
@@ -245,7 +240,6 @@ export function ProfileEditForm({
             />
           </div>
 
-          {/* Interests */}
           <div className="space-y-2">
             <Label htmlFor="interests">Interests</Label>
             <Textarea

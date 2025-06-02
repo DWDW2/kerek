@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Upload, Camera, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-context";
+import { Input } from "../ui/input";
 
 interface ProfileImageUploadProps {
   currentImageUrl?: string;
@@ -34,7 +35,6 @@ export function ProfileImageUpload({
       return;
     }
 
-    // Validate file type
     const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
     if (!allowedTypes.includes(file.type)) {
       toast.error(
@@ -43,7 +43,6 @@ export function ProfileImageUpload({
       return;
     }
 
-    // Validate file size (5MB max)
     const maxSize = 5 * 1024 * 1024;
     if (file.size > maxSize) {
       toast.error("File size too large. Maximum 5MB allowed.");
@@ -53,14 +52,12 @@ export function ProfileImageUpload({
     setIsUploading(true);
 
     try {
-      // Create preview
       const reader = new FileReader();
       reader.onload = (e) => {
         setPreviewUrl(e.target?.result as string);
       };
       reader.readAsDataURL(file);
 
-      // Upload to R2
       const formData = new FormData();
       formData.append("file", file);
       formData.append("folder", "profile-images");
@@ -111,13 +108,13 @@ export function ProfileImageUpload({
           </div>
         )}
 
-        <button
+        <Button
           onClick={triggerFileSelect}
           disabled={isUploading}
           className="absolute inset-0 bg-black/0 group-hover:bg-black/40 rounded-full flex items-center justify-center transition-all duration-200 opacity-0 group-hover:opacity-100"
         >
           <Camera className="h-6 w-6 text-white" />
-        </button>
+        </Button>
       </div>
 
       <div className="flex gap-2">
@@ -133,7 +130,7 @@ export function ProfileImageUpload({
         </Button>
       </div>
 
-      <input
+      <Input
         ref={fileInputRef}
         type="file"
         accept="image/jpeg,image/png,image/webp,image/gif"

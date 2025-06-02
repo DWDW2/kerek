@@ -96,7 +96,6 @@ export function ProfileClient({ getProfileData }: ProfileClientProps) {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Profile Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-6">
           <Avatar className="h-24 w-24 border-4 border-border">
@@ -133,7 +132,6 @@ export function ProfileClient({ getProfileData }: ProfileClientProps) {
         </Button>
       </div>
 
-      {/* Profile Information Cards */}
       {(user.project_building || user.interests) && (
         <div className="grid gap-4 md:grid-cols-2">
           {user.project_building && (
@@ -162,7 +160,6 @@ export function ProfileClient({ getProfileData }: ProfileClientProps) {
         </div>
       )}
 
-      {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -217,7 +214,6 @@ export function ProfileClient({ getProfileData }: ProfileClientProps) {
         </Card>
       </div>
 
-      {/* Activity Chart */}
       <Card>
         <CardHeader>
           <CardTitle>Monthly Activity</CardTitle>

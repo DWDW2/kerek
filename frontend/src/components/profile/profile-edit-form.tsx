@@ -156,7 +156,7 @@ export function ProfileEditForm({
         <CardTitle className="flex items-center gap-2">Edit Profile</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="flex justify-center">
+        <div className="flex justify-center mb-5">
           <ProfileImageUpload
             currentImageUrl={formData.profile_image_url}
             onImageUploaded={handleImageUploaded}

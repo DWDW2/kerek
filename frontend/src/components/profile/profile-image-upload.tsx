@@ -107,14 +107,6 @@ export function ProfileImageUpload({
             <Loader2 className="h-6 w-6 text-white animate-spin" />
           </div>
         )}
-
-        <Button
-          onClick={triggerFileSelect}
-          disabled={isUploading}
-          className="absolute inset-0 bg-black/0 group-hover:bg-black/40 rounded-full flex items-center justify-center transition-all duration-200 opacity-0 group-hover:opacity-100"
-        >
-          <Camera className="h-6 w-6 text-white" />
-        </Button>
       </div>
 
       <div className="flex gap-2">

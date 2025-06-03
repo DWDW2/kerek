@@ -5,14 +5,17 @@ use scylla::client::session::Session;
 use log::{info, error, warn, debug};
 use actix_web::http::StatusCode;
 use jsonwebtoken::{decode, DecodingKey, Validation};
-use serde::Deserialize;
+use scylla::SerializeRow;
+use serde::{Deserialize, Serialize};
 use std::env;
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 use tokio::sync::{RwLock, mpsc};
 use crate::models::message::NewMessage;
+use crate::models::user::User;
 use crate::utils::jwt::Claims;
 use crate::error::AppError;
+use crate::utils::db_client::DbClient;
 use crate::conversations::service as conversation_service;
 
 pub struct RoomState {
@@ -25,6 +28,11 @@ pub type RoomStore = Arc<RwLock<HashMap<String, RoomState>>>;
 #[derive(Deserialize, Debug)]
 pub struct ConversationQuery {
     token: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct OnlineQuery {
+    user_id: String,
 }
 
 pub async fn echo(
@@ -250,4 +258,47 @@ pub async fn echo(
     info!("WebSocket handler setup complete for user {} in conversation {}", user_id, conversation_id);
 
     Ok(res)
+}
+
+#[derive(Deserialize,SerializeRow, Debug, Serialize)]
+pub struct UserOnline {
+    user_id: String,
+    online: bool,
+}
+
+pub async fn online(
+    req: HttpRequest,
+    stream: web::Payload,
+    query: web::Query<OnlineQuery>,
+    dbsession: web::Data<Session>,
+    room_store: web::Data<RoomStore>,
+) -> Result<HttpResponse, Error> {
+    let (res, mut session, mut stream) = actix_ws::handle(&req, stream)?;
+    let db_client = DbClient::<UserOnline> { 
+        session: &dbsession, 
+        _phantom: std::marker::PhantomData
+    };
+
+   tokio::select! {
+        Some(msg) = stream.next() => {
+            match msg {
+                Ok(Message::Text(text)) => {
+                    let user_online = UserOnline {
+                        user_id: query.user_id.clone(),
+                        online: true,
+                    };
+                    db_client.insert("UPDATE users SET online = ? WHERE id = ?", (user_online.online, user_online.user_id)).await;
+                    Ok(HttpResponse::Ok().finish())
+                }
+                Err(e) => {
+                    error!("WebSocket error: {}", e);
+                    return Err(e.into());
+                }
+                _ => {
+                    debug!("Received non-text message from user {}", query.user_id);
+                    return Err(AppError("Invalid message".to_string(), StatusCode::BAD_REQUEST).into());
+                }
+            }
+        }
+   }
 }

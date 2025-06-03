@@ -8,7 +8,7 @@ import { Message } from "@/types/conversation";
 import { ConversationCustomization } from "@/types/conversation";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/lib/auth-context";
+import { useAuth } from "@/context/auth-context";
 import { useEffect } from "react";
 
 interface MessageListProps {

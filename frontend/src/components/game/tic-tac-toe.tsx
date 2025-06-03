@@ -5,7 +5,7 @@ import { X, Circle, RotateCcw, Users, Trophy, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useAuth } from "@/lib/auth-context";
+import { useAuth } from "@/context/auth-context";
 import { toast } from "sonner";
 
 type Player = "X" | "O";

@@ -3,7 +3,7 @@ import { Conversation } from "@/types/conversation";
 import { Card, CardTitle, CardHeader, CardContent } from "../ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import Link from "next/link";
-import { useAuth } from "@/lib/auth-context";
+import { useAuth } from "@/context/auth-context";
 import { useUser } from "@/hooks/use-user";
 
 type Props = {

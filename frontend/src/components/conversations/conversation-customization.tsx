@@ -15,7 +15,7 @@ import {
 import type { ConversationCustomization } from "@/types/conversation";
 import { Upload, Palette, Image as ImageIcon, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { useAuth } from "@/lib/auth-context";
+import { useAuth } from "@/context/auth-context";
 
 interface ConversationCustomizationProps {
   conversationId: string;

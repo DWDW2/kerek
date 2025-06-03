@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useRef } from "react";
 import ForceGraph2D, { ForceGraphMethods } from "react-force-graph-2d";
-import { useAuth } from "@/lib/auth-context";
+import { useAuth } from "@/context/auth-context";
 import MessagesSidebar from "@/components/conversations/messages-sidebar";
 import { useConversation } from "@/hooks/use-conversation";
 import { useUser } from "@/hooks/use-user";

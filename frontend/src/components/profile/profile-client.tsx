@@ -15,7 +15,7 @@ import {
   Code,
   Heart,
 } from "lucide-react";
-import { useAuth } from "@/lib/auth-context";
+import { useAuth } from "@/context/auth-context";
 import { useRouter } from "next/navigation";
 import { ProfileEditForm } from "@/components/profile/profile-edit-form";
 import { User } from "@/types/user";

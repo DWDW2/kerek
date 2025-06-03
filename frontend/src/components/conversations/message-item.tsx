@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/lib/auth-context";
+import { useAuth } from "@/context/auth-context";
 import JSConfetti from "js-confetti";
 import { useEffect, useRef } from "react";
 import { Message } from "@/types/conversation";

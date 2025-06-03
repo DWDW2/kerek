@@ -23,6 +23,7 @@ export interface Conversation {
   updated_at: string;
   last_message?: Message;
   customization?: ConversationCustomization;
+  message_count: number;
 }
 
 export interface NewMessage {

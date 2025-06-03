@@ -17,7 +17,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Gamepad2, Users, Trophy, Clock } from "lucide-react";
+import { Gamepad2, Users, Trophy, Clock, Keyboard } from "lucide-react";
 import Link from "next/link";
 
 interface GameLauncherProps {
@@ -42,6 +42,15 @@ const availableGames: GameInfo[] = [
     players: "2 players",
     duration: "2-5 minutes",
     icon: <Trophy className="w-6 h-6" />,
+  },
+  {
+    id: "speed-typing",
+    name: "Speed Typing",
+    description:
+      "Race against your opponent to type the text as fast as possible!",
+    players: "2 players",
+    duration: "1-3 minutes",
+    icon: <Keyboard className="w-6 h-6" />,
   },
 ];
 

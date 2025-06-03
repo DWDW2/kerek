@@ -1,5 +1,6 @@
 import React, { use } from "react";
 import { TicTacToe } from "@/components/game/tic-tac-toe";
+import { SpeedTyping } from "@/components/game/speed-typing";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -11,11 +12,13 @@ type Props = {
 
 export default function GamePage({ params }: Props) {
   const { id, game } = use(params);
-
+  // kerek.club/conversations/some-id/
   const renderGame = () => {
     switch (game.toLowerCase()) {
       case "tic-tac-toe":
         return <TicTacToe conversationId={id} />;
+      case "speed-typing":
+        return <SpeedTyping conversationId={id} />;
       default:
         return (
           <Card className="max-w-md mx-auto">
@@ -30,7 +33,7 @@ export default function GamePage({ params }: Props) {
                 The game "{game}" is not available.
               </p>
               <p className="text-sm text-muted-foreground">
-                Available games: Tic Tac Toe
+                Available games: Tic Tac Toe, Speed Typing
               </p>
               <Link href={`/dashboard/conversations/${id}`}>
                 <Button variant="outline" className="flex items-center gap-2">
@@ -47,7 +50,6 @@ export default function GamePage({ params }: Props) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
       <div className="max-w-4xl mx-auto">
-        {/* Header */}
         <div className="mb-6">
           <Link href={`/dashboard/conversations/${id}`}>
             <Button variant="ghost" className="flex items-center gap-2 mb-4">
@@ -67,7 +69,6 @@ export default function GamePage({ params }: Props) {
           </div>
         </div>
 
-        {/* Game Content */}
         {renderGame()}
       </div>
     </div>

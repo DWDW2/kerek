@@ -20,6 +20,8 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           command_timeout: 20m
           script: |
+            sudo chmod 600 /home/zhansar/zhansar/kerek/frontend/.env
+            sudo chmod 600 /home/zhansar/zhansar/kerek/api/.env
             cat > ./zhansar/kerek/frontend/.env <<EOF
             NEXT_PUBLIC_API_URL=https://kerek.club/api
             API_URL=http://rust-backend:8080/api

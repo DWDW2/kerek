@@ -1,6 +1,6 @@
 "use server";
-import { listConversations } from "./conversations";
-import { Conversation } from "@/types/conversation";
+import { listConversations, listMessages } from "./conversations";
+import { Conversation, LatestMessages } from "@/types/conversation";
 
 export async function getDashboardData(token: string) {
   const conversations = (await listConversations(
@@ -76,25 +76,21 @@ export async function getProfileData(token: string) {
   };
 }
 
-export async function getAssistantData(token: string) {
-  const conversations = (await listConversations(
-    token
-  )) as unknown as Conversation[];
+export async function getLatestMessagesByConversation(
+  token: string
+): Promise<LatestMessages[]> {
+  const conversations = (await listConversations(token)) as Conversation[];
 
-  const conversationSummaries = conversations.map((conv) => ({
-    id: conv.id,
-    name: conv.name || "Untitled Conversation",
-    messageCount: conv.message_count || 0,
-    createdAt: conv.created_at,
-    updatedAt: conv.updated_at,
-  }));
+  const latestMessages = await Promise.all(
+    conversations.map(async (conv) => {
+      const messages = await listMessages(conv.id, 1, token);
+      return {
+        id: conv.id,
+        name: conv.name || "Untitled Conversation",
+        message: messages?.[0] || null,
+      };
+    })
+  );
 
-  return {
-    conversationSummaries,
-    totalConversations: conversations.length,
-    totalMessages: conversations.reduce(
-      (acc, conv) => acc + (conv.message_count || 0),
-      0
-    ),
-  };
+  return latestMessages.filter((msg) => msg.message !== null);
 }

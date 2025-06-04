@@ -43,3 +43,9 @@ export interface ListMessagesRequest {
 export interface ConversationWithMessages extends Conversation {
   messages: Message[];
 }
+
+export type LatestMessages = {
+  id: string;
+  message: Message;
+  name: string;
+};

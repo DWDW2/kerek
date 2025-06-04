@@ -63,7 +63,7 @@ const navigationData = {
     },
   ],
 };
-
+// TODO: fix the size of the icons.
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
   const { user } = useAuth();
@@ -79,28 +79,27 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader className="p-4 relative overflow-hidden">
-        <>
-          <Link href="/">
-            <h2 className="text-xl font-semibold text-black mb-1">Kerek</h2>
-          </Link>
+        <Link href="/" className="flex flex-col items-center">
+          <h2 className="text-xl font-semibold text-black mb-1">K</h2>
           <div className="w-6 h-0.5 bg-black rounded-full"></div>
-        </>
+        </Link>
       </SidebarHeader>
 
-      <SidebarContent className="px-3 py-4">
-        <SidebarMenu>
+      <SidebarContent className="px-2 py-4">
+        <SidebarMenu className="space-y-2">
           {navigationData.mainNav.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
 
             return (
               <SidebarMenuItem key={item.href}>
-                <SidebarMenuButton asChild>
+                <SidebarMenuButton asChild className="h-12 w-full p-0">
                   <Link
                     href={item.href}
                     onClick={handleNavClick}
+                    title={item.title}
                     className={cn(
-                      "flex items-center gap-2 font-medium text-sm transition-all duration-300 hover:text-foreground hover:bg-primary/10 rounded-lg p-3 group",
+                      "flex items-center justify-center w-full h-12 font-medium transition-all duration-300 hover:text-foreground hover:bg-primary/10 rounded-lg group",
                       isActive
                         ? "text-primary font-semibold bg-primary/10 shadow-sm"
                         : "text-muted-foreground hover:text-primary"
@@ -108,16 +107,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   >
                     <Icon
                       className={cn(
-                        "h-4 w-4 transition-all duration-300",
+                        "h-7 w-7 transition-all duration-300 shrink-0",
                         isActive && "text-primary"
                       )}
                     />
-                    <span className="transition-all duration-300">
-                      {item.title}
-                    </span>
-                    {isActive && (
-                      <div className="ml-auto w-2 h-2 rounded-full bg-primary animate-pulse"></div>
-                    )}
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -125,30 +118,28 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           })}
         </SidebarMenu>
 
-        <div className="my-6 h-px bg-gradient-to-r from-transparent via-border to-transparent"></div>
+        <div className="my-6 h-px bg-gradient-to-r from-transparent via-border to-transparent mx-2"></div>
 
-        <SidebarMenu>
+        <SidebarMenu className="space-y-2">
           {navigationData.secondaryNav.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.href;
 
             return (
               <SidebarMenuItem key={item.href}>
-                <SidebarMenuButton asChild>
+                <SidebarMenuButton asChild className="w-full h-12">
                   <Link
                     href={item.href}
                     onClick={handleNavClick}
+                    title={item.title}
                     className={cn(
-                      "flex items-center gap-2 text-sm transition-all duration-300 hover:text-foreground hover:bg-gray-50 rounded-lg p-3 group",
+                      "flex items-center justify-center w-full h-12 transition-all duration-300 hover:text-foreground hover:bg-gray-50 rounded-lg group",
                       isActive
                         ? "text-foreground font-semibold bg-gray-50"
                         : "text-muted-foreground"
                     )}
                   >
-                    <Icon className="h-4 w-4 transition-colors duration-300 group-hover:text-gray-700" />
-                    <span className="transition-colors duration-300">
-                      {item.title}
-                    </span>
+                    <Icon className="h-7 w-7 transition-colors duration-300 group-hover:text-gray-700 shrink-0" />
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -157,31 +148,24 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarContent>
 
-      <SidebarFooter className="py-3 px-3 border-t">
+      <SidebarFooter className="py-3 px-2 border-t">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild>
+            <SidebarMenuButton asChild className="w-full h-12">
               <Link
                 href="/dashboard/profile"
-                className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 transition-all duration-300 group"
+                className="flex items-center justify-center w-full h-12 rounded-lg hover:bg-gray-50 transition-all duration-300 group relative"
+                title="Profile"
               >
                 <div className="relative">
                   <Image
                     src={"/avatar.png"}
                     alt={user?.username || "User"}
-                    className="h-8 w-8 rounded-full ring-2 ring-purple-100 transition-all duration-300 group-hover:ring-purple-200"
-                    width={32}
-                    height={32}
+                    className="h-10 w-10 rounded-full ring-2 ring-purple-100 transition-all duration-300 group-hover:ring-purple-200"
+                    width={40}
+                    height={40}
                   />
                   <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></div>
-                </div>
-                <div className="flex flex-col min-w-0 flex-1">
-                  <span className="text-sm font-medium text-gray-900 truncate">
-                    {user?.username}
-                  </span>
-                  <span className="text-xs text-muted-foreground truncate">
-                    {user?.email}
-                  </span>
                 </div>
               </Link>
             </SidebarMenuButton>

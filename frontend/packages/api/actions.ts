@@ -1,6 +1,7 @@
 "use server";
 import { listConversations, listMessages } from "./conversations";
 import { Conversation, LatestMessages } from "@/types/conversation";
+import { getUser } from "./user";
 
 export async function getDashboardData(token: string) {
   const conversations = (await listConversations(
@@ -80,7 +81,7 @@ export async function getLatestMessagesByConversation(
   token: string
 ): Promise<LatestMessages[]> {
   const conversations = (await listConversations(token)) as Conversation[];
-
+  const currentUser = await getUser(token);
   const latestMessages = await Promise.all(
     conversations.map(async (conv) => {
       const messages = await listMessages(conv.id, 1, token);
@@ -88,6 +89,7 @@ export async function getLatestMessagesByConversation(
         id: conv.id,
         name: conv.name || "Untitled Conversation",
         message: messages?.[0] || null,
+        other_user: conv.participant_ids.find((id) => id !== currentUser?.id),
       };
     })
   );

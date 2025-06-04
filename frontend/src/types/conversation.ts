@@ -48,4 +48,5 @@ export type LatestMessages = {
   id: string;
   message: Message;
   name: string;
+  other_user: string;
 };

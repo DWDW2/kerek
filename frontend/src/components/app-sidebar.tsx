@@ -148,7 +148,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </SidebarMenu>
       </SidebarContent>
 
-      <SidebarFooter className="py-3 px-2 border-t">
+      <SidebarFooter className="py-3 px-2">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton asChild className="w-full h-12">

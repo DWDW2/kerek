@@ -88,11 +88,18 @@ export async function getLatestMessagesByConversation(
       return {
         id: conv.id,
         name: conv.name || "Untitled Conversation",
-        message: messages?.[0] || null,
-        other_user: conv.participant_ids.find((id) => id !== currentUser?.id),
+        message: messages?.[0] || {
+          id: "",
+          content: "",
+          created_at: "",
+          updated_at: "",
+          role: "",
+        },
+        other_user:
+          conv.participant_ids.find((id) => id !== currentUser?.id) || "",
       };
     })
   );
-
-  return latestMessages.filter((msg) => msg.message !== null);
+  console.log(latestMessages);
+  return latestMessages;
 }

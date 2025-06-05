@@ -28,7 +28,7 @@ const ConversationHeader: React.FC<ConversationHeaderProps> = ({
           )}
         </div>
         <div className="flex flex-col">
-          <span>Chat with {reciever?.username}</span>
+          <span className="text-lg">Chat with {reciever?.username}</span>
           <span className="text-sm font-normal text-muted-foreground">
             {reciever?.is_online ? "Online" : "Offline"}
           </span>

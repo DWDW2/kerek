@@ -4,7 +4,11 @@ import { Header } from "@/components/dashboard/header";
 import { AppMessagesSidebar } from "@/components/app-messages-sidebar";
 import { getLatestMessagesByConversation } from "@/packages/api/actions";
 
-export default function Layout({ children }: { children: React.ReactNode }) {
+export default async function Layout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <SidebarProvider>
       <AppSidebar />

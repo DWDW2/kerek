@@ -49,7 +49,10 @@ const MessageInput: React.FC<MessageInputProps> = ({
   };
 
   return (
-    <form onSubmit={handleSendMessage} className="flex items-center space-x-2">
+    <form
+      onSubmit={handleSendMessage}
+      className="flex items-center p-5 border-t"
+    >
       <div className="flex-1 relative flex items-center space-x-2">
         <Input
           value={newMessage}

@@ -4,6 +4,7 @@ mod error;
 mod middleware;
 mod users;
 mod conversations;
+mod groups;
 mod utils;
 use actix_cors::Cors;
 use actix_web::{web, App, HttpServer};
@@ -14,6 +15,7 @@ use std::env;
 use actix_web::middleware::Logger;
 use crate::users::handler as user_handler;
 use crate::conversations::handler as conversation_handler;
+use crate::groups::handler as group_handler;
 use crate::utils::websocket as websocket_handler;
 use crate::utils::websocket::RoomStore;
 use crate::utils::seed;
@@ -92,6 +94,20 @@ async fn main() -> std::io::Result<()> {
                                     .route("/{id}/messages", web::post().to(conversation_handler::send_message))
                                     .route("/{id}/messages", web::get().to(conversation_handler::list_messages))
                                     .route("/{id}/customization", web::post().to(conversation_handler::update_conversation_customization))
+                            )
+                            .service(
+                                web::scope("/groups")
+                                    .route("", web::post().to(group_handler::create_group))
+                                    .route("", web::get().to(group_handler::list_user_groups))
+                                    .route("/{id}", web::get().to(group_handler::get_group))
+                                    .route("/{id}", web::put().to(group_handler::update_group))
+                                    .route("/{id}", web::delete().to(group_handler::delete_group))
+                                    .route("/{id}/members", web::post().to(group_handler::add_member))
+                                    .route("/{id}/members", web::delete().to(group_handler::remove_member))
+                                    .route("/{id}/leave", web::post().to(group_handler::leave_group))
+                                    .route("/{id}/messages", web::post().to(group_handler::send_message))
+                                    .route("/{id}/messages", web::get().to(group_handler::list_messages))
+                                    .route("/{id}/customization", web::post().to(group_handler::update_group_customization))
                             )
                     )
             )

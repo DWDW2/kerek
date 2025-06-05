@@ -2,10 +2,8 @@
 import { useEffect, useState, useRef } from "react";
 import ForceGraph2D, { ForceGraphMethods } from "react-force-graph-2d";
 import { useAuth } from "@/context/auth-context";
-import MessagesSidebar from "@/components/conversations/messages-sidebar";
 import { useConversation } from "@/hooks/use-conversation";
 import { useUser } from "@/hooks/use-user";
-import { useResizePanels } from "@/hooks/use-resize-panels";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface NodeData {
@@ -41,22 +39,12 @@ export default function ConversationsPage() {
     nodes: [],
     links: [],
   });
-  const [selectedNode, setSelectedNode] = useState<NodeData | null>(null);
-  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const isMobile = useIsMobile();
   const { user } = useAuth();
   const graphRef = useRef<ForceGraphMethods | undefined>(undefined);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const { createConversation, conversations } = useConversation();
+  const { createConversation } = useConversation();
   const { users, isFetchingUsers } = useUser();
-
-  const { leftWidth, rightWidth, isResizing, handleMouseDown } =
-    useResizePanels({
-      containerRef,
-      initialLeftWidth: 60,
-      minWidth: 20,
-      maxWidth: 80,
-    });
 
   useEffect(() => {
     if (user) {
@@ -96,20 +84,6 @@ export default function ConversationsPage() {
   }, [user, users]);
 
   useEffect(() => {
-    const handleMouseMoveForTooltip = (event: MouseEvent) => {
-      setTooltipPos({ x: event.clientX, y: event.clientY });
-    };
-
-    if (selectedNode) {
-      document.addEventListener("mousemove", handleMouseMoveForTooltip);
-    }
-
-    return () => {
-      document.removeEventListener("mousemove", handleMouseMoveForTooltip);
-    };
-  }, [selectedNode]);
-
-  useEffect(() => {
     const handleResize = () => {
       if (graphRef.current) {
         setTimeout(() => {
@@ -123,10 +97,7 @@ export default function ConversationsPage() {
     handleResize();
 
     return () => window.removeEventListener("resize", handleResize);
-  }, [leftWidth]);
-
-  const containerWidth = containerRef.current?.clientWidth || window.innerWidth;
-  const graphWidth = (containerWidth * leftWidth) / 100 - 32;
+  }, []);
 
   const drawNode = (node: any, ctx: CanvasRenderingContext2D) => {
     const size = node.val || 6;
@@ -163,12 +134,9 @@ export default function ConversationsPage() {
 
   return (
     <section ref={containerRef} className="flex flex-row h-full relative">
-      <div
-        className="p-4 h-full flex flex-col transition-all duration-150 ease-out"
-        style={{ width: `${leftWidth}%` }}
-      >
+      <div className="p-4 h-full flex flex-col transition-all duration-150 ease-out">
         <div className="font-bold text-xl mb-4">Explore Neighborhood</div>
-        <div className="flex-1 relative">
+        <div className="flex-1 relative overflow-hidden">
           {graphData.nodes.length > 0 && !isFetchingUsers && (
             <ForceGraph2D
               ref={graphRef}
@@ -177,9 +145,9 @@ export default function ConversationsPage() {
               nodeRelSize={6}
               linkWidth={1}
               linkColor={() => "#E0E0E0"}
+              width={isMobile ? window.innerWidth : 500}
+              height={isMobile ? window.innerHeight : 500}
               cooldownTime={3000}
-              width={graphWidth}
-              height={window.innerHeight - 100}
               onNodeClick={(node) => {
                 const clickedNode = node as NodeData;
                 if (clickedNode.id !== user?.id) {
@@ -190,122 +158,10 @@ export default function ConversationsPage() {
                   });
                 }
               }}
-              onNodeHover={(node, prevNode) => {
-                if (node) {
-                  setSelectedNode(node as NodeData);
-                } else {
-                  setSelectedNode(null);
-                }
-              }}
-              onNodeDrag={(node) => {
-                setSelectedNode(null);
-              }}
             />
-          )}
-
-          {selectedNode && (
-            <div
-              className="absolute bg-white border border-gray-200 rounded-lg shadow-lg p-4 pointer-events-none z-10 max-w-xs"
-              style={{
-                left: tooltipPos.x + 10,
-                top: tooltipPos.y - 10,
-                transform: "translate(-200%, -100%)",
-              }}
-            >
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <span className="text-primary font-semibold">
-                    {selectedNode.user.username[0]?.toUpperCase()}
-                  </span>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-sm">
-                    {selectedNode.user.username}
-                  </h3>
-                  <div className="flex items-center gap-1">
-                    <div
-                      className={`w-2 h-2 rounded-full ${
-                        selectedNode.user.is_online
-                          ? "bg-green-400"
-                          : "bg-gray-400"
-                      }`}
-                    />
-                    <span className="text-xs text-muted-foreground">
-                      {selectedNode.user.is_online ? "Online" : "Offline"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-2 text-xs">
-                {selectedNode.user.home_country && (
-                  <div>
-                    <span className="font-medium">Location:</span>{" "}
-                    <span className="text-muted-foreground">
-                      {selectedNode.user.home_country}
-                    </span>
-                  </div>
-                )}
-
-                {selectedNode.user.language && (
-                  <div>
-                    <span className="font-medium">Language:</span>{" "}
-                    <span className="text-muted-foreground">
-                      {selectedNode.user.language.toUpperCase()}
-                    </span>
-                  </div>
-                )}
-
-                {selectedNode.user.project_building && (
-                  <div>
-                    <span className="font-medium">Building:</span>{" "}
-                    <span className="text-muted-foreground">
-                      {selectedNode.user.project_building}
-                    </span>
-                  </div>
-                )}
-
-                {selectedNode.user.interests && (
-                  <div>
-                    <span className="font-medium">Interests:</span>{" "}
-                    <span className="text-muted-foreground">
-                      {selectedNode.user.interests.slice(0, 50)}
-                      {selectedNode.user.interests.length > 50 ? "..." : ""}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-3 pt-2 border-t border-gray-100">
-                <span className="text-xs text-muted-foreground">
-                  Click to start a conversation
-                </span>
-              </div>
-            </div>
           )}
         </div>
       </div>
-      {/* {!isMobile && (
-        <>
-          <div
-            className={`w-1 bg-gray-200 hover:bg-gray-300 cursor-col-resize relative group transition-colors duration-200 ${
-              isResizing ? "bg-blue-400" : ""
-            }`}
-            onMouseDown={handleMouseDown}
-          >
-            <div className="absolute inset-y-0 -left-1 -right-1 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              <div className="w-1 h-8 bg-accent rounded-full"></div>
-            </div>
-          </div>
-
-          <div
-            className="h-full transition-all duration-150 ease-out"
-            style={{ width: `${rightWidth}%` }}
-          >
-            <MessagesSidebar conversations={conversations} />
-          </div>
-        </>
-      )} */}
     </section>
   );
 }

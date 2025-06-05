@@ -26,6 +26,7 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const navigationData = {
   mainNav: [
@@ -63,10 +64,11 @@ const navigationData = {
     },
   ],
 };
-// TODO: fix the size of the icons.
+
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const [animationTrigger, setAnimationTrigger] = React.useState(0);
   const [isAnimating, setIsAnimating] = React.useState(false);
 
@@ -99,10 +101,11 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     onClick={handleNavClick}
                     title={item.title}
                     className={cn(
-                      "flex items-center justify-center w-full h-12 font-medium transition-all duration-300 hover:text-foreground hover:bg-primary/10 rounded-lg group",
+                      "flex items-center w-full h-12 font-medium transition-all duration-300 hover:text-foreground hover:bg-primary/10 rounded-lg group",
                       isActive
                         ? "text-primary font-semibold bg-primary/10 shadow-sm"
-                        : "text-muted-foreground hover:text-primary"
+                        : "text-muted-foreground hover:text-primary",
+                      isMobile ? "px-4" : "justify-center"
                     )}
                   >
                     <Icon
@@ -111,6 +114,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                         isActive && "text-primary"
                       )}
                     />
+                    {isMobile && <span className="ml-3">{item.title}</span>}
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -133,13 +137,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                     onClick={handleNavClick}
                     title={item.title}
                     className={cn(
-                      "flex items-center justify-center w-full h-12 transition-all duration-300 hover:text-foreground hover:bg-gray-50 rounded-lg group",
+                      "flex items-center w-full h-12 transition-all duration-300 hover:text-foreground hover:bg-gray-50 rounded-lg group",
                       isActive
                         ? "text-foreground font-semibold bg-gray-50"
-                        : "text-muted-foreground"
+                        : "text-muted-foreground",
+                      isMobile ? "px-4" : "justify-center"
                     )}
                   >
                     <Icon className="h-7 w-7 transition-colors duration-300 group-hover:text-gray-700 shrink-0" />
+                    {isMobile && <span className="ml-3">{item.title}</span>}
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -154,7 +160,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarMenuButton asChild className="w-full h-12">
               <Link
                 href="/dashboard/profile"
-                className="flex items-center justify-center w-full h-12 rounded-lg hover:bg-gray-50 transition-all duration-300 group relative"
+                className={cn(
+                  "flex items-center w-full h-12 rounded-lg hover:bg-gray-50 transition-all duration-300 group relative",
+                  isMobile ? "px-4" : "justify-center"
+                )}
                 title="Profile"
               >
                 <div className="relative">
@@ -167,6 +176,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   />
                   <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-400 rounded-full border-2 border-white"></div>
                 </div>
+                {isMobile && (
+                  <span className="ml-3">{user?.username || "Profile"}</span>
+                )}
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

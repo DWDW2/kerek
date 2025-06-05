@@ -285,7 +285,7 @@ export default function ConversationsPage() {
           )}
         </div>
       </div>
-      {!isMobile && (
+      {/* {!isMobile && (
         <>
           <div
             className={`w-1 bg-gray-200 hover:bg-gray-300 cursor-col-resize relative group transition-colors duration-200 ${
@@ -305,7 +305,7 @@ export default function ConversationsPage() {
             <MessagesSidebar conversations={conversations} />
           </div>
         </>
-      )}
+      )} */}
     </section>
   );
 }

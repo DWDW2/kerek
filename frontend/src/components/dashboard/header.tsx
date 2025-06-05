@@ -51,7 +51,7 @@ export function Header() {
   }
 
   return (
-    <header className="flex flex-row w-full p-4 items-center gap-2 shadow">
+    <header className="flex flex-row w-full p-4 items-center gap-2 border-b">
       <SidebarTrigger />
       <DashboardBreadcrumbs />
     </header>

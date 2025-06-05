@@ -1,6 +1,4 @@
-import { getConversation } from "../../../../../../packages/api/conversations";
 import { ConversationDetail } from "@/components/conversations/conversation-detail";
-import { notFound } from "next/navigation";
 
 interface ConversationPageProps {
   params: {

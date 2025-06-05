@@ -202,7 +202,7 @@ export function ConversationDetail() {
 
   return (
     <Card className="h-full flex flex-col border-none shadow-none rounded-none p-0 m-0">
-      <CardHeader className="border-b px-6 py-6 bg-gradient-to-r from-primary/10 to-secondary/10 flex items-center gap-2">
+      <CardHeader className="border-b px-6 py-6 bg-gradient-to-r from-primary/10 to-secondary/10 flex items-center gap-2 h-[61px]">
         <Link href="/dashboard">
           <ArrowLeftIcon />
         </Link>
@@ -215,7 +215,7 @@ export function ConversationDetail() {
           <GameLauncher conversationId={conversationId as string} />
         </div>
       </CardHeader>
-      <CardContent className="flex-1 flex flex-col p-0">
+      <CardContent className="flex-1 flex flex-col p-0 justify-between">
         <MessageList
           messages={messages}
           hasMore={hasMore}
@@ -224,19 +224,17 @@ export function ConversationDetail() {
           scrollRef={scrollRef as React.RefObject<HTMLDivElement>}
           customization={conversation.customization}
         />
-        <div className="border-t p-5 bg-gradient-to-r from-background to-muted/30">
-          <MessageInput
-            isConnected={isConnected}
-            isSending={isSending}
-            wsError={wsError}
-            newMessage={newMessage}
-            setNewMessage={setNewMessage}
-            onSendContent={sendContent}
-          />
-          {wsError && (
-            <p className="text-sm text-red-500 mt-2 text-center">{wsError}</p>
-          )}
-        </div>
+        <MessageInput
+          isConnected={isConnected}
+          isSending={isSending}
+          wsError={wsError}
+          newMessage={newMessage}
+          setNewMessage={setNewMessage}
+          onSendContent={sendContent}
+        />
+        {wsError && (
+          <p className="text-sm text-red-500 mt-2 text-center">{wsError}</p>
+        )}
       </CardContent>
     </Card>
   );

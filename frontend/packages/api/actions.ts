@@ -1,6 +1,7 @@
 "use server";
-import { listConversations } from "./conversations";
-import { Conversation } from "@/types/conversation";
+import { listConversations, listMessages } from "./conversations";
+import { Conversation, LatestMessages } from "@/types/conversation";
+import { getUser } from "./user";
 
 export async function getDashboardData(token: string) {
   const conversations = (await listConversations(
@@ -76,25 +77,29 @@ export async function getProfileData(token: string) {
   };
 }
 
-export async function getAssistantData(token: string) {
-  const conversations = (await listConversations(
-    token
-  )) as unknown as Conversation[];
-
-  const conversationSummaries = conversations.map((conv) => ({
-    id: conv.id,
-    name: conv.name || "Untitled Conversation",
-    messageCount: conv.message_count || 0,
-    createdAt: conv.created_at,
-    updatedAt: conv.updated_at,
-  }));
-
-  return {
-    conversationSummaries,
-    totalConversations: conversations.length,
-    totalMessages: conversations.reduce(
-      (acc, conv) => acc + (conv.message_count || 0),
-      0
-    ),
-  };
+export async function getLatestMessagesByConversation(
+  token: string
+): Promise<LatestMessages[]> {
+  const conversations = (await listConversations(token)) as Conversation[];
+  const currentUser = await getUser(token);
+  const latestMessages = await Promise.all(
+    conversations.map(async (conv) => {
+      const messages = await listMessages(conv.id, 1, token);
+      return {
+        id: conv.id,
+        name: conv.name || "Untitled Conversation",
+        message: messages?.[0] || {
+          id: "",
+          content: "",
+          created_at: "",
+          updated_at: "",
+          role: "",
+        },
+        other_user:
+          conv.participant_ids.find((id) => id !== currentUser?.id) || "",
+      };
+    })
+  );
+  console.log(latestMessages);
+  return latestMessages;
 }

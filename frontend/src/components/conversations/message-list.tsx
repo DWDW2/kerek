@@ -53,7 +53,7 @@ const MessageList: React.FC<MessageListProps> = ({
     <div className="w-full">
       <ScrollArea
         ref={scrollRef}
-        className="flex-1 px-6 relative h-[76vh]"
+        className="flex-1 px-6 relative h-[75vh]"
         style={backgroundStyle}
       >
         {customization?.background_image_url && (

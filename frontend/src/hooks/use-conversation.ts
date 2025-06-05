@@ -54,15 +54,6 @@ export function useConversation(conversationId?: string) {
     }
   }, [conversationId]);
 
-  useEffect(() => {
-    if (conversationId) {
-      loadConversation();
-    } else {
-      setIsLoading(false);
-      setConversation(null);
-    }
-  }, [conversationId, loadConversation]);
-
   const refetch = useCallback(() => {
     if (conversationId) {
       setIsLoading(true);
@@ -156,6 +147,53 @@ export function useConversation(conversationId?: string) {
       setIsFetching(false);
     }
   }, []);
+
+  const latesestMessagesByConversation = useCallback(async () => {
+    try {
+      setIsFetching(true);
+      setError(null);
+
+      const token = localStorage.getItem("auth_token");
+      if (!token) {
+        throw new Error("No authentication token found");
+      }
+
+      const response = await fetch("/api/conversations/latest-messages", {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch latest messages by conversation: ${response.status}`
+        );
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to fetch latest messages by conversation";
+      console.error("Error fetching latest messages by conversation:", error);
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setIsFetching(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (conversationId) {
+      loadConversation();
+    } else {
+      setIsLoading(false);
+      setConversation(null);
+    }
+  }, [conversationId, loadConversation]);
 
   useEffect(() => {
     fetchConversations();

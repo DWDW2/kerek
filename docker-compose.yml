@@ -38,11 +38,11 @@ services:
       - CASSANDRA_CLUSTER_NAME=MyCluster
       - CASSANDRA_DC=DC1
       - CASSANDRA_RACK=Rack1
-  game:
+  web-socket:
     build:
-      context: ./game
+      context: ./web-socket
       dockerfile: Dockerfile
-    container_name: game-server
+    container_name: web-socket-server
     ports:
       - "3001:3001"
     environment:

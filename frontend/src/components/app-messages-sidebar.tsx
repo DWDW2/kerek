@@ -6,12 +6,16 @@ import { useUser } from "@/hooks/use-user";
 import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
 import Link from "next/link";
 import { MessageSquareIcon } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 type Props = {
   getLatestMessages: (token: string) => Promise<LatestMessages[]>;
 };
 
 export function AppMessagesSidebar({ getLatestMessages }: Props) {
+  const pathname = usePathname();
+  const isConversationChat = pathname.includes("conversations");
+
   const [latestMessages, setLatestMessages] = useState<LatestMessages[]>([]);
 
   useEffect(() => {
@@ -26,19 +30,25 @@ export function AppMessagesSidebar({ getLatestMessages }: Props) {
 
   return (
     <>
-      <Card className="flex-col gap-2 w-[16rem] py-0 pb-6 hidden md:flex">
-        <CardHeader className="border-b [.border-b]:pb-0 px-0 h-[60px] p-6">
-          <div className="text-lg text-gray-500 font-semibold">Messages</div>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-2 px-2">
-          {latestMessages.map((message) => (
-            <MessageItem key={message.id} message={message} />
-          ))}
-        </CardContent>
-      </Card>
-      <div className="rounded-full h-12 w-12 fixed bottom-5 right-5 bg-primary text-white flex items-center justify-center md:hidden">
-        <MessageSquareIcon />
-      </div>
+      {!isConversationChat && (
+        <>
+          <Card className="flex-col gap-2 w-[16rem] py-0 pb-6 hidden md:flex">
+            <CardHeader className="border-b [.border-b]:pb-0 px-0 h-[60px] p-6">
+              <div className="text-lg text-gray-500 font-semibold">
+                Messages
+              </div>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-2 px-2">
+              {latestMessages.map((message) => (
+                <MessageItem key={message.id} message={message} />
+              ))}
+            </CardContent>
+          </Card>
+          <div className="rounded-full h-12 w-12 fixed bottom-5 right-5 bg-primary text-white flex items-center justify-center md:hidden">
+            <MessageSquareIcon />
+          </div>
+        </>
+      )}
     </>
   );
 }

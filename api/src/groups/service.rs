@@ -88,7 +88,7 @@ impl GroupService {
         };
 
         let results = db_client.query::<(Uuid, String, CqlTimestamp, CqlTimestamp), _>(
-            "SELECT id, name, created_at, updated_at FROM groups WHERE id = ?",
+            "SELECT id, name, created_at, updated_at FROM groups WHERE id = ? ALLOW FILTERING",
             Some((group_id,))
         ).await?;
 
@@ -96,7 +96,7 @@ impl GroupService {
             let members = self.get_group_members(&id.to_string()).await?;
             
             let customization_results = db_client.query::<(Option<String>, Option<String>, Option<String>, Option<String>, Option<String>, Option<String>), _>(
-                "SELECT background_image_url, primary_message_color, secondary_message_color, text_color_primary, text_color_secondary, photo_url FROM group_customization WHERE group_id = ? LIMIT 1",
+                "SELECT background_image_url, primary_message_color, secondary_message_color, text_color_primary, text_color_secondary, photo_url FROM group_customization WHERE group_id = ? LIMIT 1 ALLOW FILTERING",
                 Some((id,))
             ).await?;
 
@@ -134,7 +134,7 @@ impl GroupService {
         };
 
         let results = db_client.query::<(Uuid, CqlTimestamp), _>(
-            "SELECT user_id, joined_at FROM group_members WHERE group_id = ?",
+            "SELECT user_id, joined_at FROM group_members WHERE group_id = ? ALLOW FILTERING",
             Some((group_uuid,))
         ).await?;
 
@@ -155,7 +155,7 @@ impl GroupService {
         };
 
         let group_results = db_client.query::<(Uuid, CqlTimestamp), _>(
-            "SELECT group_id, joined_at FROM group_members WHERE user_id = ?",
+            "SELECT group_id, joined_at FROM group_members WHERE user_id = ? ALLOW FILTERING",
             Some((user_uuid,))
         ).await?;
 
@@ -294,7 +294,7 @@ impl GroupService {
         };
 
         let results = db_client.query::<(Uuid, CqlTimeuuid, Uuid, String, CqlTimestamp, CqlTimestamp), _>(
-            "SELECT group_id, message_id, sender_id, content, sent_at, edited_at FROM group_messages WHERE group_id = ? ORDER BY message_id DESC LIMIT ?",
+            "SELECT group_id, message_id, sender_id, content, sent_at, edited_at FROM group_messages WHERE group_id = ? ORDER BY message_id DESC LIMIT ? ALLOW FILTERING",
             Some((group_uuid, limit))
         ).await?;
 

@@ -35,13 +35,13 @@ export default function HeroSection() {
         </Button>
       </section>
 
-      <Image
+      {/* <Image
         src={"/hero-image.png"}
         width={1000}
         height={600}
         className="rounded object-cover object-top absolute -bottom-[150px] overflow-clip w-[80%] hidden md:block "
         alt="hero-image"
-      />
+      /> */}
     </div>
   );
 }

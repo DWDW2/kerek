@@ -5,9 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Users, MessageCircle, Calendar } from "lucide-react";
+import { Users, MessageCircle, Calendar, Share, Copy } from "lucide-react";
 import { format } from "date-fns";
 import Link from "next/link";
+import { toast } from "sonner";
 
 interface GroupCardProps {
   group: Group;
@@ -18,6 +19,20 @@ export function GroupCard({ group }: GroupCardProps) {
     new Date(group.created_at * 1000),
     "MMM d, yyyy"
   );
+
+  const generateInviteLink = () => {
+    return `${window.location.origin}/invite/group/${group.id}`;
+  };
+
+  const handleShareLink = async () => {
+    const link = generateInviteLink();
+    try {
+      await navigator.clipboard.writeText(link);
+      toast.success("Invite link copied to clipboard!");
+    } catch (error) {
+      toast.error("Failed to copy link");
+    }
+  };
 
   return (
     <Card className="hover:shadow-md transition-shadow">
@@ -48,6 +63,15 @@ export function GroupCard({ group }: GroupCardProps) {
             </div>
           </div>
           <div className="flex space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleShareLink}
+              title="Share invite link"
+            >
+              <Share className="mr-1 h-4 w-4" />
+              Share
+            </Button>
             <Link href={`/dashboard/groups/${group.id}`}>
               <Button variant="outline" size="sm">
                 <MessageCircle className="mr-1 h-4 w-4" />

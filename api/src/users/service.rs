@@ -126,7 +126,7 @@ pub async fn update_profile(session: &web::Data<Session>, id: &str, update_data:
     let uuid = Uuid::parse_str(id).map_err(|e| AppError(format!("Invalid UUID format: {}", e), StatusCode::BAD_REQUEST))?;
     let now = Utc::now().timestamp();
 
-    // Get current user to use existing values for fields that aren't being updated
+
     let current_user = find_by_id(session, id).await?
         .ok_or_else(|| AppError("User not found".to_string(), StatusCode::NOT_FOUND))?;
 
@@ -135,7 +135,6 @@ pub async fn update_profile(session: &web::Data<Session>, id: &str, update_data:
         _phantom: PhantomData 
     };
 
-    // Update only provided fields, keep existing values for others
     db_client.insert(
         "UPDATE users SET username = ?, email = ?, interests = ?, language = ?, profile_image_url = ?, home_country = ?, project_building = ?, updated_at = ? WHERE id = ?",
         (
@@ -231,7 +230,7 @@ pub async fn search_users(
         "SELECT id, username, email, created_at, last_seen_at, is_online, interests, language FROM users",
         None::<()>
     ).await?;
-
+    log::debug!("Results: {:?}", results);
     let users = results
         .into_iter()
         .filter(|(_, username, email, _, _, _, _, _)| username.contains(query) || email.contains(query))
@@ -251,7 +250,7 @@ pub async fn search_users(
             }
         })
         .collect();
-
+    
     Ok(users)
 }
 

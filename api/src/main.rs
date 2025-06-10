@@ -57,12 +57,13 @@ async fn main() -> std::io::Result<()> {
             .max_age(3600);
 
         App::new()
-            .wrap(Logger::new("%a %t '%r' %s %b '%{Referer}i' %D"))
+            .wrap(Logger::default())
             .wrap(cors)
             .app_data(session_data.clone())
             .app_data(web::Data::new(room_store.clone()))
             .app_data(web::Data::new(jwt_secret.clone()))
             .route("/ws/{id}", web::get().to(websocket_handler::echo))
+            .route("/ws/groups/{id}", web::get().to(websocket_handler::group_echo))
             .route("/ws/online", web::get().to(websocket_handler::online))
             .service(
                 web::scope("/api")
@@ -100,6 +101,8 @@ async fn main() -> std::io::Result<()> {
                                     .route("", web::post().to(group_handler::create_group))
                                     .route("", web::get().to(group_handler::list_user_groups))
                                     .route("/{id}", web::get().to(group_handler::get_group))
+                                    .route("/{id}/public", web::get().to(group_handler::get_group_public))
+                                    .route("/{id}/join", web::post().to(group_handler::join_group))
                                     .route("/{id}", web::put().to(group_handler::update_group))
                                     .route("/{id}", web::delete().to(group_handler::delete_group))
                                     .route("/{id}/members", web::post().to(group_handler::add_member))

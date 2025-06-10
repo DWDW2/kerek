@@ -36,14 +36,7 @@ export default function GroupsPage() {
           <Users className="h-6 w-6" />
           <h1 className="text-2xl font-bold">Groups</h1>
         </div>
-        <CreateGroupDialog
-          trigger={
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Group
-            </Button>
-          }
-        />
+        <CreateGroupDialog />
       </div>
 
       {groups.length === 0 ? (

@@ -7,6 +7,7 @@ use crate::models::group::{
 use crate::error::AppError;
 use crate::groups::service::GroupService;
 use serde::{Serialize, Deserialize};
+use serde_json;
 use actix_web::http::StatusCode;
 use crate::utils::jwt::get_user_id_from_token;
 
@@ -190,6 +191,40 @@ pub async fn delete_group(
 
     service.delete_group(&group_id).await?;
     Ok(HttpResponse::NoContent().finish())
+}
+
+pub async fn join_group(
+    session: web::Data<Session>,
+    req: HttpRequest,
+    group_id: web::Path<String>,
+) -> Result<HttpResponse, AppError> {
+    let user_id = get_user_id_from_token(&req)?;
+    let service = GroupService::new(session).await?;
+    
+    let updated_group = service
+        .add_member(&group_id, &user_id)
+        .await?;
+    Ok(HttpResponse::Ok().json(updated_group))
+}
+
+pub async fn get_group_public(
+    session: web::Data<Session>,
+    req: HttpRequest,
+    group_id: web::Path<String>,
+) -> Result<HttpResponse, AppError> {
+    let _user_id = get_user_id_from_token(&req)?; // Verify token but don't check membership
+    let service = GroupService::new(session).await?;
+    let group = service.get_group(&group_id).await?;
+    
+    // Return limited public information
+    let public_info = serde_json::json!({
+        "id": group.id,
+        "name": group.name,
+        "member_ids": group.member_ids,
+        "customization": group.customization
+    });
+    
+    Ok(HttpResponse::Ok().json(public_info))
 }
 
 pub async fn leave_group(

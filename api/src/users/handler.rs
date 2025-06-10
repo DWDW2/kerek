@@ -86,7 +86,7 @@ pub async fn search_users(
     session: web::Data<Session>,
     query: web::Query<SearchQuery>,
 ) -> Result<impl Responder, AppError> {
-    let users = service::search_users(&session, &query.q).await?;
+    let users = service::search_users(&session, &query.into_inner().q).await?;
     Ok(HttpResponse::Ok().json(users))
 }
 

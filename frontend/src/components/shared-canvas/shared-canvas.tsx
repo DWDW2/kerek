@@ -13,6 +13,7 @@ import {
 import { ShapeFactory } from "./shape-factory";
 import CanvasToolbar from "./canvas-toolbar";
 import CanvasShapeComponent, { TriangleShape } from "./canvas-shape";
+import { useAuth } from "@/context/auth-context";
 
 interface SharedCanvasProps {
   className?: string;
@@ -57,6 +58,31 @@ export default function SharedCanvas({ className = "" }: SharedCanvasProps) {
     fontSize: 16,
     fontFamily: "Arial",
   });
+
+  const { token } = useAuth();
+
+  const ws = new WebSocket(
+    `${process.env.NEXT_PUBLIC_WS_URL}/ws/canvas?token=${token}`
+  );
+
+  ws.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    if (data.type === "update") {
+      setCanvasState((prev) => ({
+        ...prev,
+        shapes: data.shapes,
+      }));
+    }
+  };
+
+  useEffect(() => {
+    ws.send(
+      JSON.stringify({
+        type: "update",
+        shapes: canvasState.shapes,
+      })
+    );
+  }, [canvasState.shapes]);
 
   const updateCanvasSize = useCallback(() => {
     if (containerRef.current) {
@@ -472,7 +498,6 @@ export default function SharedCanvas({ className = "" }: SharedCanvasProps) {
           <Layer>{renderShapes()}</Layer>
         </Stage>
 
-        {/* Text editing textarea */}
         {editingTextId && textPosition && (
           <textarea
             ref={textareaRef}

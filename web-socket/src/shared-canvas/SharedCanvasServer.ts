@@ -7,7 +7,7 @@ export class SharedCanvasServer {
   private sharedCanvasManager: SharedCanvasManager;
   constructor(server: Server) {
     this.wss = new WebSocketServer({ server });
-    this.sharedCanvasManager = new SharedCanvasManager();
+    this.sharedCanvasManager = new SharedCanvasManager(server);
     this.setupWebSocketHandlers();
   }
 
@@ -17,7 +17,7 @@ export class SharedCanvasServer {
       const url = req.url;
 
       if (url?.includes("/ws/shared-canvas")) {
-        this.sharedCanvasManager.handleConnection(ws);
+        this.sharedCanvasManager.handleConnection();
         return;
       }
     });

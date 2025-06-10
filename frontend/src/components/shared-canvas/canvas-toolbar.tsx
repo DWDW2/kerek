@@ -16,10 +16,18 @@ import {
 import { ShapeType, DrawingOptions } from "./types";
 
 interface CanvasToolbarProps {
-  currentTool: ShapeType | "select" | "pan";
+  tool: ShapeType | "select" | "pan";
   onToolChange: (tool: ShapeType | "select" | "pan") => void;
   drawingOptions: DrawingOptions;
   onDrawingOptionsChange: (options: Partial<DrawingOptions>) => void;
+  canvasConfig: any;
+  onCanvasConfigChange: (config: any) => void;
+  onClearCanvas: () => void;
+  connectionStatus: {
+    isConnected: boolean;
+    userCount: number;
+    currentUserColor: string;
+  };
   className?: string;
 }
 
@@ -63,10 +71,14 @@ const colors = [
 ];
 
 export default function CanvasToolbar({
-  currentTool,
+  tool,
   onToolChange,
   drawingOptions,
   onDrawingOptionsChange,
+  canvasConfig,
+  onCanvasConfigChange,
+  onClearCanvas,
+  connectionStatus,
   className = "",
 }: CanvasToolbarProps) {
   const [showColorPicker, setShowColorPicker] = useState(false);
@@ -104,14 +116,14 @@ export default function CanvasToolbar({
       className={`bg-white border border-gray-200 rounded-lg shadow-lg p-2 ${className}`}
     >
       <div className="flex flex-wrap gap-1 mb-2">
-        {tools.map((tool) => {
-          const Icon = tool.icon;
-          const isActive = currentTool === tool.type;
+        {tools.map((toolItem) => {
+          const Icon = toolItem.icon;
+          const isActive = tool === toolItem.type;
 
           return (
             <button
-              key={tool.type}
-              onClick={() => onToolChange(tool.type)}
+              key={toolItem.type}
+              onClick={() => onToolChange(toolItem.type)}
               className={`
                 flex items-center justify-center w-10 h-10 rounded-md transition-colors
                 hover:bg-gray-100 active:bg-gray-200
@@ -122,8 +134,8 @@ export default function CanvasToolbar({
                 }
                 focus:outline-none focus:ring-2 focus:ring-blue-300
               `}
-              title={`${tool.name} (${tool.shortcut})`}
-              aria-label={tool.name}
+              title={`${toolItem.name} (${toolItem.shortcut})`}
+              aria-label={toolItem.name}
             >
               <Icon size={18} />
             </button>
@@ -267,6 +279,42 @@ export default function CanvasToolbar({
               </div>
             </div>
           )}
+        </div>
+
+        {/* Connection Status */}
+        <div className="flex items-center gap-2 ml-auto">
+          <div className="flex items-center gap-2 text-xs text-gray-600">
+            <div className="flex items-center gap-1">
+              <div
+                className={`w-2 h-2 rounded-full ${
+                  connectionStatus.isConnected ? "bg-green-500" : "bg-red-500"
+                }`}
+              />
+              <span>
+                {connectionStatus.isConnected ? "Connected" : "Disconnected"}
+              </span>
+            </div>
+            <span>•</span>
+            <span>
+              {connectionStatus.userCount} user
+              {connectionStatus.userCount !== 1 ? "s" : ""}
+            </span>
+            {connectionStatus.currentUserColor && (
+              <>
+                <span>•</span>
+                <div className="flex items-center gap-1">
+                  <div
+                    className="w-3 h-3 rounded-full border border-gray-300"
+                    style={{
+                      backgroundColor: connectionStatus.currentUserColor,
+                    }}
+                    title="Your color"
+                  />
+                  <span>You</span>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 

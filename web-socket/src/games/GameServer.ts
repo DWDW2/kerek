@@ -1,5 +1,5 @@
-import { WebSocketServer } from "ws";
-import { Server } from "http";
+import { WebSocket, WebSocketServer } from "ws";
+import { IncomingMessage } from "http";
 import { TicTacToeManager } from "./TicTacToeManager";
 import { SpeedTypingManager } from "./SpeedTypingManager";
 
@@ -8,25 +8,20 @@ export class GameServer {
   private ticTacToeManager: TicTacToeManager;
   private speedTypingManager: SpeedTypingManager;
 
-  constructor(server: Server) {
-    this.wss = new WebSocketServer({ server });
+  constructor(wss: WebSocketServer) {
+    this.wss = wss;
     this.ticTacToeManager = new TicTacToeManager();
     this.speedTypingManager = new SpeedTypingManager();
-    this.setupWebSocketHandlers();
   }
 
-  private setupWebSocketHandlers() {
-    this.wss.on("connection", (ws, req) => {
-      console.log("New WebSocket connection");
-      const url = req.url;
+  public handleSpeedTypingConnection(ws: WebSocket, req: IncomingMessage) {
+    console.log("Speed typing game connection established");
+    this.speedTypingManager.handleConnection(ws);
+  }
 
-      if (url?.includes("/ws/typing-game")) {
-        this.speedTypingManager.handleConnection(ws);
-        return;
-      }
-
-      this.ticTacToeManager.handleConnection(ws);
-    });
+  public handleTicTacToeConnection(ws: WebSocket, req: IncomingMessage) {
+    console.log("Tic-tac-toe game connection established");
+    this.ticTacToeManager.handleConnection(ws);
   }
 
   getHealthStats() {
@@ -37,6 +32,7 @@ export class GameServer {
       totalActiveGames:
         this.ticTacToeManager.getActiveGamesCount() +
         this.speedTypingManager.getActiveGamesCount(),
+      totalConnections: this.wss.clients.size,
     };
   }
 }

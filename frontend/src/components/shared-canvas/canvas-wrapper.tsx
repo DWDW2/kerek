@@ -6,8 +6,10 @@ const SharedCanvas = dynamic(() => import("./shared-canvas"), {
   ssr: false,
 });
 
-type Props = {};
+interface CanvasWrapperProps {
+  conversationId: string;
+}
 
-export default function CanvasWrapper({}: Props) {
-  return <SharedCanvas />;
+export default function CanvasWrapper({ conversationId }: CanvasWrapperProps) {
+  return <SharedCanvas conversationId={conversationId} />;
 }

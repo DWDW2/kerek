@@ -1,25 +1,29 @@
-import { WebSocketServer } from "ws";
-import { Server } from "http";
+import { WebSocket, WebSocketServer } from "ws";
+import { IncomingMessage } from "http";
 import { SharedCanvasManager } from "./SharedCanvasManager";
 
 export class SharedCanvasServer {
   private wss: WebSocketServer;
   private sharedCanvasManager: SharedCanvasManager;
-  constructor(server: Server) {
-    this.wss = new WebSocketServer({ server });
-    this.sharedCanvasManager = new SharedCanvasManager(server);
-    this.setupWebSocketHandlers();
+
+  constructor(wss: WebSocketServer) {
+    this.wss = wss;
+    this.sharedCanvasManager = new SharedCanvasManager();
   }
 
-  private setupWebSocketHandlers() {
-    this.wss.on("connection", (ws, req) => {
-      console.log("New WebSocket connection");
-      const url = req.url;
+  public handleConnection(ws: WebSocket, req: IncomingMessage) {
+    console.log("Shared canvas connection established");
 
-      if (url?.includes("/ws/shared-canvas")) {
-        this.sharedCanvasManager.handleConnection();
-        return;
-      }
-    });
+    const url = new URL(req.url || "", "http://localhost");
+
+    this.sharedCanvasManager.handleConnection(ws);
+  }
+
+  public getConnectionCount(): number {
+    return this.sharedCanvasManager.getConnectionCount();
+  }
+
+  public getRoomStats() {
+    return this.sharedCanvasManager.getRoomStats();
   }
 }

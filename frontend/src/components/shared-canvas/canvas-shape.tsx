@@ -15,20 +15,32 @@ import type {
 interface CanvasShapeProps {
   shape: CanvasShape;
   isSelected: boolean;
-  onSelect: (id: string) => void;
-  onDragStart: () => void;
-  onDragEnd: (id: string, newAttrs: any) => void;
-  onDoubleClick?: (id: string) => void;
+  collaborativeHighlight?: string | null; // Color of the user who has this shape selected
+  onClick: () => void;
+  onChange: (newAttrs: any) => void;
+  draggable: boolean;
 }
 
 export default function CanvasShapeComponent({
   shape,
   isSelected,
-  onSelect,
-  onDragStart,
-  onDragEnd,
-  onDoubleClick,
+  collaborativeHighlight,
+  onClick,
+  onChange,
+  draggable,
 }: CanvasShapeProps) {
+  // Determine shadow effect based on selection state
+  let shadowBlur = 0;
+  let shadowColor = "transparent";
+
+  if (isSelected) {
+    shadowBlur = 10;
+    shadowColor = "#0088ff"; // Current user's selection (blue)
+  } else if (collaborativeHighlight) {
+    shadowBlur = 8;
+    shadowColor = collaborativeHighlight; // Other user's selection
+  }
+
   const commonProps = {
     id: shape.id,
     x: shape.x,
@@ -41,21 +53,25 @@ export default function CanvasShapeComponent({
     scaleX: shape.scaleX,
     scaleY: shape.scaleY,
     visible: shape.visible,
-    draggable: shape.draggable,
-    onClick: () => onSelect(shape.id),
-    onTap: () => onSelect(shape.id),
-    onDragStart,
+    draggable,
+    onClick,
+    onTap: onClick,
     onDragEnd: (e: any) => {
-      onDragEnd(shape.id, {
+      onChange({
         x: e.target.x(),
         y: e.target.y(),
+        timestamp: Date.now(),
       });
     },
-    onDblClick: () => onDoubleClick?.(shape.id),
-    onDblTap: () => onDoubleClick?.(shape.id),
-    shadowBlur: isSelected ? 10 : 0,
-    shadowColor: isSelected ? "#0088ff" : "transparent",
+    shadowBlur,
+    shadowColor,
     shadowOffset: { x: 0, y: 0 },
+    // Add a subtle border for collaborative highlighting
+    ...(collaborativeHighlight &&
+      !isSelected && {
+        strokeWidth: Math.max(shape.strokeWidth, 2),
+        stroke: collaborativeHighlight,
+      }),
   };
 
   switch (shape.type) {
@@ -120,7 +136,6 @@ export default function CanvasShapeComponent({
 
     case "text":
       const textShape = shape as TextShape;
-
       return (
         <Text
           key={shape.id}
@@ -146,16 +161,30 @@ export default function CanvasShapeComponent({
 export function TriangleShape({
   shape,
   isSelected,
-  onSelect,
-  onDragStart,
-  onDragEnd,
+  collaborativeHighlight,
+  onClick,
+  onChange,
+  draggable,
 }: {
   shape: TriangleShape;
   isSelected: boolean;
-  onSelect: (id: string) => void;
-  onDragStart: () => void;
-  onDragEnd: (id: string, newAttrs: any) => void;
+  collaborativeHighlight?: string | null;
+  onClick: () => void;
+  onChange: (newAttrs: any) => void;
+  draggable: boolean;
 }) {
+  // Determine shadow effect based on selection state
+  let shadowBlur = 0;
+  let shadowColor = "transparent";
+
+  if (isSelected) {
+    shadowBlur = 10;
+    shadowColor = "#0088ff";
+  } else if (collaborativeHighlight) {
+    shadowBlur = 8;
+    shadowColor = collaborativeHighlight;
+  }
+
   const commonProps = {
     id: shape.id,
     x: shape.x,
@@ -168,19 +197,25 @@ export function TriangleShape({
     scaleX: shape.scaleX,
     scaleY: shape.scaleY,
     visible: shape.visible,
-    draggable: shape.draggable,
-    onClick: () => onSelect(shape.id),
-    onTap: () => onSelect(shape.id),
-    onDragStart,
+    draggable,
+    onClick,
+    onTap: onClick,
     onDragEnd: (e: any) => {
-      onDragEnd(shape.id, {
+      onChange({
         x: e.target.x(),
         y: e.target.y(),
+        timestamp: Date.now(),
       });
     },
-    shadowBlur: isSelected ? 10 : 0,
-    shadowColor: isSelected ? "#0088ff" : "transparent",
+    shadowBlur,
+    shadowColor,
     shadowOffset: { x: 0, y: 0 },
+    // Add a subtle border for collaborative highlighting
+    ...(collaborativeHighlight &&
+      !isSelected && {
+        strokeWidth: Math.max(shape.strokeWidth, 2),
+        stroke: collaborativeHighlight,
+      }),
   };
 
   return (

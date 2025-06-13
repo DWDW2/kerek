@@ -130,6 +130,56 @@ pub async fn setup_database(session: &web::Data<Session>, new: bool) -> Result<(
         )",
         &[]
     ).await?;
-    
+
+
+    session.query_unpaged(
+        "CREATE TABLE IF NOT EXISTS groups (
+            id UUID PRIMARY KEY,
+            name TEXT,
+            created_at TIMESTAMP,
+            updated_at TIMESTAMP
+        )",     
+        &[]
+    ).await?;
+
+    session.query_unpaged(
+        "CREATE TABLE IF NOT EXISTS group_members (
+            group_id UUID,
+            user_id UUID,
+            joined_at TIMESTAMP,
+            PRIMARY KEY (group_id, user_id)
+        )",
+        &[]
+    ).await?;
+
+    session.query_unpaged(
+        "CREATE TABLE IF NOT EXISTS group_messages (
+            group_id UUID,
+            message_id TIMEUUID,
+            sender_id UUID,
+            content TEXT,
+            sent_at TIMESTAMP,
+            edited_at TIMESTAMP,
+            PRIMARY KEY (group_id, message_id)
+        ) WITH CLUSTERING ORDER BY (message_id ASC)",
+        &[]
+    ).await?;
+
+
+    session.query_unpaged(
+        "CREATE TABLE IF NOT EXISTS group_customization (
+            group_id UUID,
+            user_id UUID,
+            background_image_url TEXT,
+            primary_message_color TEXT,
+            secondary_message_color TEXT,
+            text_color_primary TEXT,
+            text_color_secondary TEXT,
+            photo_url TEXT,
+            PRIMARY KEY (group_id, user_id)
+        )",
+        &[]
+    ).await?;
+
     Ok(())
 }

@@ -4,6 +4,7 @@ mod error;
 mod middleware;
 mod users;
 mod conversations;
+mod groups;
 mod utils;
 use actix_cors::Cors;
 use actix_web::{web, App, HttpServer};
@@ -14,6 +15,7 @@ use std::env;
 use actix_web::middleware::Logger;
 use crate::users::handler as user_handler;
 use crate::conversations::handler as conversation_handler;
+use crate::groups::handler as group_handler;
 use crate::utils::websocket as websocket_handler;
 use crate::utils::websocket::RoomStore;
 use crate::utils::seed;
@@ -55,12 +57,13 @@ async fn main() -> std::io::Result<()> {
             .max_age(3600);
 
         App::new()
-            .wrap(Logger::new("%a %t '%r' %s %b '%{Referer}i' %D"))
+            .wrap(Logger::new("%a %r %s %b %{Referer}i %{User-Agent}i %T"))
             .wrap(cors)
             .app_data(session_data.clone())
             .app_data(web::Data::new(room_store.clone()))
             .app_data(web::Data::new(jwt_secret.clone()))
             .route("/ws/{id}", web::get().to(websocket_handler::echo))
+            .route("/ws/groups/{id}", web::get().to(websocket_handler::group_echo))
             .route("/ws/online", web::get().to(websocket_handler::online))
             .service(
                 web::scope("/api")
@@ -79,7 +82,7 @@ async fn main() -> std::io::Result<()> {
                                     .route("/me", web::get().to(user_handler::get_me))
                                     .route("/profile/{id}", web::get().to(user_handler::get_profile))
                                     .route("/profile", web::put().to(user_handler::update_profile))
-                                    .route("/profile/search", web::get().to(user_handler::search_users))
+                                    .route("/profile/search/{id}", web::get().to(user_handler::search_users))
                                     .route("", web::get().to(user_handler::get_all_users))
                                     .route("/online", web::post().to(user_handler::set_user_online))
                             )
@@ -92,6 +95,22 @@ async fn main() -> std::io::Result<()> {
                                     .route("/{id}/messages", web::post().to(conversation_handler::send_message))
                                     .route("/{id}/messages", web::get().to(conversation_handler::list_messages))
                                     .route("/{id}/customization", web::post().to(conversation_handler::update_conversation_customization))
+                            )
+                            .service(
+                                web::scope("/groups")
+                                    .route("", web::post().to(group_handler::create_group))
+                                    .route("", web::get().to(group_handler::list_user_groups))
+                                    .route("/{id}", web::get().to(group_handler::get_group))
+                                    .route("/{id}/public", web::get().to(group_handler::get_group_public))
+                                    .route("/{id}/join", web::post().to(group_handler::join_group))
+                                    .route("/{id}", web::put().to(group_handler::update_group))
+                                    .route("/{id}", web::delete().to(group_handler::delete_group))
+                                    .route("/{id}/members", web::post().to(group_handler::add_member))
+                                    .route("/{id}/members", web::delete().to(group_handler::remove_member))
+                                    .route("/{id}/leave", web::post().to(group_handler::leave_group))
+                                    .route("/{id}/messages", web::post().to(group_handler::send_message))
+                                    .route("/{id}/messages", web::get().to(group_handler::list_messages))
+                                    .route("/{id}/customization", web::post().to(group_handler::update_group_customization))
                             )
                     )
             )

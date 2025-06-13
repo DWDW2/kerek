@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 const RUST_API_URL = process.env.API_URL || "http://localhost:8080";
 
-export async function GET(request: NextRequest) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { groupId: string } }
+) {
   try {
     const authHeader = request.headers.get("authorization");
 
@@ -12,21 +15,20 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       );
     }
-    const searchParams = request.nextUrl.searchParams;
-    const query = searchParams.get('q')
-    console.log(query) 
+
     const response = await fetch(
-      `${RUST_API_URL}/users/profile/search/${query}`,
+      `${RUST_API_URL}/groups/${params.groupId}/public`,
       {
         headers: {
           Authorization: authHeader,
         },
       }
     );
-    console.log(response);
+
     if (!response.ok) {
+      const errorData = await response.text();
       return NextResponse.json(
-        { error: "Failed to search users" },
+        { error: errorData || "Failed to get group information" },
         { status: response.status }
       );
     }
@@ -34,7 +36,7 @@ export async function GET(request: NextRequest) {
     const data = await response.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error("Error searching users:", error);
+    console.error("Error getting group public info:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

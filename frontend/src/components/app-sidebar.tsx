@@ -10,6 +10,7 @@ import {
   HelpCircle,
   Search,
   Settings2,
+  Users,
 } from "lucide-react";
 
 import {
@@ -39,6 +40,11 @@ const navigationData = {
       title: "Conversations",
       href: "/dashboard/conversations",
       icon: MessageSquare,
+    },
+    {
+      title: "Groups",
+      href: "/dashboard/groups",
+      icon: Users,
     },
     {
       title: "Dashboard",

@@ -84,11 +84,11 @@ pub async fn update_profile(
 
 pub async fn search_users(
     session: web::Data<Session>,
-    query: web::Query<SearchQuery>,
+    path: web::Path<String>,
 ) -> Result<impl Responder, AppError> {
-    let users = service::search_users(&session, &query.q).await?;
+    let users = service::search_users(&session,path.into_inner()).await?;
     Ok(HttpResponse::Ok().json(users))
-}
+} 
 
 pub async fn logout(
     session: web::Data<Session>,

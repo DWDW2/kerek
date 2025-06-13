@@ -126,7 +126,7 @@ pub async fn update_profile(session: &web::Data<Session>, id: &str, update_data:
     let uuid = Uuid::parse_str(id).map_err(|e| AppError(format!("Invalid UUID format: {}", e), StatusCode::BAD_REQUEST))?;
     let now = Utc::now().timestamp();
 
-    // Get current user to use existing values for fields that aren't being updated
+
     let current_user = find_by_id(session, id).await?
         .ok_or_else(|| AppError("User not found".to_string(), StatusCode::NOT_FOUND))?;
 
@@ -135,7 +135,6 @@ pub async fn update_profile(session: &web::Data<Session>, id: &str, update_data:
         _phantom: PhantomData 
     };
 
-    // Update only provided fields, keep existing values for others
     db_client.insert(
         "UPDATE users SET username = ?, email = ?, interests = ?, language = ?, profile_image_url = ?, home_country = ?, project_building = ?, updated_at = ? WHERE id = ?",
         (
@@ -220,21 +219,21 @@ pub async fn delete_user(session: &web::Data<Session>, id: &str) -> Result<(), A
 
 pub async fn search_users(
     session: &web::Data<Session>,
-    query: &str,
+    path: String
 ) -> Result<Vec<UserProfile>, AppError> {
     let db_client = DbClient::<UserProfile> { 
         session, 
         _phantom: PhantomData 
     };
 
-    let results = db_client.query::<(Uuid, String, String, CqlTimestamp, Option<CqlTimestamp>, bool, String, String), _>(
+    let results = db_client.query::<(Uuid, String, String, CqlTimestamp, Option<CqlTimestamp>, bool, Option<String>, Option<String>), _>(
         "SELECT id, username, email, created_at, last_seen_at, is_online, interests, language FROM users",
         None::<()>
-    ).await?;
+    ).await?;   
 
     let users = results
         .into_iter()
-        .filter(|(_, username, email, _, _, _, _, _)| username.contains(query) || email.contains(query))
+        .filter(|(_, username, email, _, _, _, _, _)| username.contains(path.as_str().clone()) || email.contains(path.as_str().clone()))
         .map(|(id, username, email, created_at, last_seen_at, is_online, interests, language)| {
             UserProfile {
                 id: id.to_string(),
@@ -243,15 +242,15 @@ pub async fn search_users(
                 created_at: created_at.0,
                 last_seen_at: last_seen_at.map(|ts| ts.0),
                 is_online,
-                interests: Some(interests),
-                language: Some(language),
+                interests,
+                language,
                 profile_image_url: None,
                 home_country: None,
                 project_building: None,
             }
         })
         .collect();
-
+    
     Ok(users)
 }
 

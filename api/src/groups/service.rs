@@ -3,7 +3,7 @@ use scylla::client::session::Session;
 use serde::{Deserialize, Serialize};
 use crate::{
     error::AppError,
-    models::group::{Group, GroupCustomization, NewGroup, GroupMessage, NewGroupMessage},
+    models::{group::{Group, GroupCustomization, GroupMessage, NewGroup, NewGroupMessage}, user},
     utils::db_client::DbClient,
 };
 use chrono::Utc;
@@ -139,7 +139,7 @@ impl GroupService {
         ).await?;
 
         let members = results.into_iter()
-            .map(|(user_id, _)| user_id)
+            .map(|(user_id, _)| (user_id))
             .collect();
 
         Ok(members)

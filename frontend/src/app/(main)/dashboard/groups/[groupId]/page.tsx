@@ -32,6 +32,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { useUser } from "@/hooks/use-user";
+
+
 
 export default function GroupDetailPage() {
   const params = useParams();
@@ -48,6 +51,8 @@ export default function GroupDetailPage() {
     leaveGroup,
     deleteGroup,
   } = useGroups(groupId);
+
+  const {users} = useUser()
 
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState("");
@@ -85,7 +90,6 @@ export default function GroupDetailPage() {
       await updateGroup(groupId, { name: editName.trim() });
       setIsEditing(false);
     } catch (error) {
-      // Error handling is done in the hook
     }
   };
 
@@ -100,7 +104,6 @@ export default function GroupDetailPage() {
       setNewMemberId("");
       setIsAddingMember(false);
     } catch (error) {
-      // Error handling is done in the hook
     }
   };
 
@@ -108,7 +111,6 @@ export default function GroupDetailPage() {
     try {
       await removeMember(groupId, { user_id: memberId });
     } catch (error) {
-      // Error handling is done in the hook
     }
   };
 
@@ -117,7 +119,6 @@ export default function GroupDetailPage() {
       try {
         await leaveGroup(groupId);
       } catch (error) {
-        // Error handling is done in the hook
       }
     }
   };
@@ -131,7 +132,6 @@ export default function GroupDetailPage() {
       try {
         await deleteGroup(groupId);
       } catch (error) {
-        // Error handling is done in the hook
       }
     }
   };
@@ -143,7 +143,6 @@ export default function GroupDetailPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <Avatar className="h-16 w-16">
@@ -278,7 +277,7 @@ export default function GroupDetailPage() {
                       {memberId.slice(0, 2).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="font-medium">{memberId}</span>
+                  <span className="font-medium">{users.find(user => user.id === memberId)?.username}</span>
                 </div>
                 <Button
                   variant="ghost"

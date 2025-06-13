@@ -57,7 +57,7 @@ async fn main() -> std::io::Result<()> {
             .max_age(3600);
 
         App::new()
-            .wrap(Logger::default())
+            .wrap(Logger::new("%a %r %s %b %{Referer}i %{User-Agent}i %T"))
             .wrap(cors)
             .app_data(session_data.clone())
             .app_data(web::Data::new(room_store.clone()))
@@ -82,7 +82,7 @@ async fn main() -> std::io::Result<()> {
                                     .route("/me", web::get().to(user_handler::get_me))
                                     .route("/profile/{id}", web::get().to(user_handler::get_profile))
                                     .route("/profile", web::put().to(user_handler::update_profile))
-                                    .route("/profile/search", web::get().to(user_handler::search_users))
+                                    .route("/profile/search/{id}", web::get().to(user_handler::search_users))
                                     .route("", web::get().to(user_handler::get_all_users))
                                     .route("/online", web::post().to(user_handler::set_user_online))
                             )

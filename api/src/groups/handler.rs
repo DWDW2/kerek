@@ -212,11 +212,11 @@ pub async fn get_group_public(
     req: HttpRequest,
     group_id: web::Path<String>,
 ) -> Result<HttpResponse, AppError> {
-    let _user_id = get_user_id_from_token(&req)?; // Verify token but don't check membership
+    let _user_id = get_user_id_from_token(&req)?; 
     let service = GroupService::new(session).await?;
     let group = service.get_group(&group_id).await?;
     
-    // Return limited public information
+
     let public_info = serde_json::json!({
         "id": group.id,
         "name": group.name,

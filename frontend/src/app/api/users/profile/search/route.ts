@@ -12,14 +12,11 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       );
     }
-
-    const { searchParams } = new URL(request.url);
-    const query = searchParams.get("q");
-
+    const searchParams = request.nextUrl.searchParams;
+    const query = searchParams.get('q')
+    console.log(query) 
     const response = await fetch(
-      `${RUST_API_URL}/users/profile/search?q=${encodeURIComponent(
-        query || ""
-      )}`,
+      `${RUST_API_URL}/users/profile/search/${query}`,
       {
         headers: {
           Authorization: authHeader,

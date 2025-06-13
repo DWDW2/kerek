@@ -34,7 +34,6 @@ export function UserSearch({
   const [results, setResults] = useState<User[]>([]);
   const [isSearching, setIsSearching] = useState(false);
 
-  // Search users function
   const searchUsers = async (query: string) => {
     if (!query.trim()) {
       setResults([]);
@@ -44,7 +43,7 @@ export function UserSearch({
     setIsSearching(true);
     try {
       const response = await fetch(
-        `/api/users/profile/search?q=${encodeURIComponent(query)}`,
+        `/api/users/profile/search?q=${encodeURIComponent(search)}`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
@@ -68,7 +67,6 @@ export function UserSearch({
     }
   };
 
-  // Debounced search effect
   useEffect(() => {
     const debounceTimer = setTimeout(() => {
       searchUsers(search);

@@ -37,6 +37,7 @@
     "emoji-picker-react": "^4.12.2",
     "framer-motion": "^12.10.5",
     "js-confetti": "^0.12.0",
+    "konva": "^9.3.20",
     "lucide-react": "^0.509.0",
     "next": "15.3.2",
     "pg": "^8.15.6",

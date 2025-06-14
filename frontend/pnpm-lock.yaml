@@ -92,6 +92,9 @@ importers:
       js-confetti:
         specifier: ^0.12.0
         version: 0.12.0
+      konva:
+        specifier: ^9.3.20
+        version: 9.3.20
       lucide-react:
         specifier: ^0.509.0
         version: 0.509.0(react@19.1.0)

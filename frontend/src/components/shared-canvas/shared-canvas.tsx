@@ -13,7 +13,6 @@ import {
 import { ShapeFactory } from "./shape-factory";
 import CanvasToolbar from "./canvas-toolbar";
 import CanvasShapeComponent, { TriangleShape } from "./canvas-shape";
-import { useAuth } from "@/context/auth-context";
 
 interface SharedCanvasProps {
   conversationId: string;
@@ -70,7 +69,6 @@ export default function SharedCanvas({
     fontFamily: "Arial",
   });
 
-  const { user, token } = useAuth();
   const [ws, setWs] = useState<WebSocket | null>(null);
   const roomId = conversationId;
   const [isConnected, setIsConnected] = useState(false);
@@ -104,16 +102,11 @@ export default function SharedCanvas({
 
     reconnectTimeoutRef.current = setTimeout(() => {
       connectionAttemptRef.current += 1;
-      setIsConnecting(false); 
+      setIsConnecting(false);
     }, delay);
   }, []);
 
   useEffect(() => {
-    if (!user || !token) {
-      console.log("User not authenticated, skipping WebSocket connection");
-      return;
-    }
-
     if (isConnecting || isConnected || wsRef.current) {
       return;
     }
@@ -124,12 +117,7 @@ export default function SharedCanvas({
     }
 
     const wsUrl = `${process.env.NEXT_PUBLIC_WS_URL}/ws/shared-canvas`;
-    console.log(
-      "Attempting to connect to WebSocket:",
-      wsUrl,
-      "for user:",
-      user.id
-    );
+    console.log("Attempting to connect to WebSocket:", wsUrl);
 
     setIsConnecting(true);
     const websocket = new WebSocket(wsUrl);
@@ -149,29 +137,21 @@ export default function SharedCanvas({
           case "connected":
             console.log("Canvas connection established");
             setCurrentUserColor(data.color);
-            connectionAttemptRef.current = 0;             
-	    setWs(websocket);
-
-            websocket.send(
-              JSON.stringify({
-                type: "user_info",
-                userId: user.id,
-                userName: user.username || user.email,
-                token: token,
-              })
-            );
-            break;
-
-          case "user_authenticated":
-            console.log("User authenticated successfully");
-            setCurrentUserId(data.userId);
+            connectionAttemptRef.current = 0;
+            setWs(websocket);
             setIsConnected(true);
+
+            // Generate a unique user ID for this session
+            const sessionUserId = `user-${Date.now()}-${Math.random()
+              .toString(36)
+              .substr(2, 9)}`;
+            setCurrentUserId(sessionUserId);
 
             websocket.send(
               JSON.stringify({
                 type: "join_room",
                 roomId: roomId,
-                userId: user.id,
+                userId: sessionUserId,
               })
             );
             break;
@@ -351,7 +331,7 @@ export default function SharedCanvas({
       setIsConnecting(false);
       setWs(null);
     };
-  }, [roomId, user, token, reconnectWebSocket]); 
+  }, [roomId, reconnectWebSocket]);
   useEffect(() => {
     return () => {
       if (reconnectTimeoutRef.current) {
@@ -370,15 +350,15 @@ export default function SharedCanvas({
       ws.send(
         JSON.stringify({
           type: "canvas_update",
-	  roomId: roomId,
-	  userId: user?.id || "", 
+          roomId: roomId,
+          userId: currentUserId,
           shapes: canvasState.shapes,
         })
       );
     }, 100);
 
     return () => clearTimeout(timeoutId);
-  }, [ws, isConnected, canvasState.shapes]);
+  }, [ws, isConnected, canvasState.shapes, currentUserId, roomId]);
 
   useEffect(() => {
     if (!ws || !isConnected) return;

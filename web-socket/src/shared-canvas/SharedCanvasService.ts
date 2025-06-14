@@ -16,7 +16,7 @@ interface UpdateCanvas {
 }
 const rooms: Map<string, Map<string, any>> = new Map();
 const user_shapes: Map<string, any> = new Map();
-const connections: Map<string, WebSocket> = new Map();
+const connections: Map<string, WebSocket> = new Map()
 export class SharedCanvasService {
   private ws: WebSocket;
 
@@ -24,60 +24,42 @@ export class SharedCanvasService {
     this.ws = ws;
   }
 
-  async handleMessage(ws: WebSocket) {
+  async handleMessage() {
     this.ws.send(JSON.stringify({ type: "connected" }));
     this.ws.on("message", (data) => {
       console.log(data.toString());
       const response: Message = JSON.parse(data.toString());
       console.log(response);
-      if (response.type === "user_info") {
+
+      if (response.type === "join_room") {
+        const message = response as JoinRoom;
+        rooms.set(message.roomId, user_shapes.set(message.userId, undefined));
+	connections.set(message.userId, this.ws) 
         this.ws.send(
           JSON.stringify({
-            type: "user_authenticated",
+            type: "room_joined",
+            userCount: rooms.get(message.roomId)?.size,
           })
         );
-        this.ws.on("message", (data) => {
-          const message: JoinRoom = JSON.parse(data.toString());
-	  connections.set(message.userId, ws);
-          if (message.type === "join_room") {
-            rooms.set(
-              message.roomId,
-              user_shapes.set(message.userId, undefined)
-            );
-            this.ws.send(
-              JSON.stringify({
-                type: "room_joined",
-                userCount: rooms.get(message.roomId)?.size,
-              })
-            );
 
-            this.ws.on("message", (data) => {
-              const message: UpdateCanvas = JSON.parse(data.toString());
-              if (message.type === "canvas_update") {
-                rooms
-                  .get(message.roomId)
-                  ?.set(message.userId, [...message.shapes]);
-              
-		  const room = rooms.get(message.roomId);
-
-		  const user = room?.get(message.userId);
-
-		  for(let key in room?.keys()) {
-			  if(key !== user){
-				  connections.get(key)?.send(JSON.stringify({
-					  type: "canvas_update",
-					  userId: message.userId,
-					  shapes: message.shapes
-				  }));
-
+	this.ws.on("message", (data) => {
+		const message: UpdateCanvas = JSON.parse(data.toString());
+		if (message.type === "canvas_update") {
+			rooms.get(message.roomId)?.set(message.userId, [...message.shapes]);
+			const room = rooms.get(message.roomId);
+			if (room) {
+				for (let key of room.keys()) {
+					if(key !== message.userId){
+						connections.get(key)?.send(JSON.stringify({
+								type: "canvas_update",
+								userId: message.userId,
+								shapes: message.shapes
+						}))
+					}
+				}
 			}
-
-		  }
-
-	      } 
-            });
-          }
-        });
+		}
+	});
       }
     });
   }

@@ -7,7 +7,6 @@ const wss = new WebSocket.Server({ port: 3001 });
 wss.on("connection", (ws, data) => {
   console.log("Connection Estabilished");
   if (data.url === "/ws/shared-canvas") {
-    console.log("got here");
     const sharedCanvas = new SharedCanvasService(ws);
     sharedCanvas.handleMessage();
   }

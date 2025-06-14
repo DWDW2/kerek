@@ -6,6 +6,7 @@ import { useUser } from "@/hooks/use-user";
 import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
 import Link from "next/link";
 import { MessageSquareIcon } from "lucide-react";
+import { usePathname } from "next/navigation";
 
 type Props = {
   getLatestMessages: (token: string) => Promise<LatestMessages[]>;
@@ -13,7 +14,7 @@ type Props = {
 
 export function AppMessagesSidebar({ getLatestMessages }: Props) {
   const [latestMessages, setLatestMessages] = useState<LatestMessages[]>([]);
-
+  const pathname = usePathname();
   useEffect(() => {
     const fetchLatestMessages = async () => {
       const messages = await getLatestMessages(
@@ -24,9 +25,9 @@ export function AppMessagesSidebar({ getLatestMessages }: Props) {
     fetchLatestMessages();
   }, [getLatestMessages]);
 
-  return (
+  return !pathname.includes("/canvas") ? (
     <>
-      <Card className="flex-col gap-2 w-[16rem] py-0 pb-6 hidden md:flex">
+      <Card className="flex-col gap-2 w-[16 rem] py-0 pb-6 hidden md:flex">
         <CardHeader className="border-b [.border-b]:pb-0 px-0 h-[60px] p-6">
           <div className="text-lg text-gray-500 font-semibold">Messages</div>
         </CardHeader>
@@ -40,6 +41,8 @@ export function AppMessagesSidebar({ getLatestMessages }: Props) {
         <MessageSquareIcon />
       </div>
     </>
+  ) : (
+    <></>
   );
 }
 

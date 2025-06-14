@@ -141,7 +141,6 @@ export default function SharedCanvas({
             setWs(websocket);
             setIsConnected(true);
 
-            // Generate a unique user ID for this session
             const sessionUserId = `user-${Date.now()}-${Math.random()
               .toString(36)
               .substr(2, 9)}`;
@@ -366,10 +365,11 @@ export default function SharedCanvas({
     ws.send(
       JSON.stringify({
         type: "user_selection",
+        userId: currentUserId,
         selectedShapeIds: canvasState.selectedShapeIds,
       })
     );
-  }, [ws, isConnected, canvasState.selectedShapeIds]);
+  }, [ws, isConnected, canvasState.selectedShapeIds, currentUserId]);
 
   const sendCursorPosition = useCallback(
     (position: Point) => {
@@ -377,12 +377,13 @@ export default function SharedCanvas({
         ws.send(
           JSON.stringify({
             type: "cursor_move",
+            userId: currentUserId,
             position,
           })
         );
       }
     },
-    [ws, isConnected]
+    [ws, isConnected, currentUserId]
   );
 
   const updateCanvasSize = useCallback(() => {
@@ -582,14 +583,33 @@ export default function SharedCanvas({
     [canvasState.tool, startTextEditing]
   );
 
-  const handleShapeChange = useCallback((shapeId: string, newAttrs: any) => {
-    setCanvasState((prev) => ({
-      ...prev,
-      shapes: prev.shapes.map((shape) =>
-        shape.id === shapeId ? { ...shape, ...newAttrs } : shape
-      ),
-    }));
-  }, []);
+  const handleShapeChange = useCallback(
+    (shapeId: string, newAttrs: any) => {
+      setCanvasState((prev) => {
+        const updatedShapes = prev.shapes.map((shape) =>
+          shape.id === shapeId ? { ...shape, ...newAttrs } : shape
+        );
+
+        const updatedShape = updatedShapes.find((s) => s.id === shapeId);
+        if (updatedShape && ws && isConnected) {
+          ws.send(
+            JSON.stringify({
+              type: "shape_update",
+              roomId: roomId,
+              userId: currentUserId,
+              shape: updatedShape,
+            })
+          );
+        }
+
+        return {
+          ...prev,
+          shapes: updatedShapes,
+        };
+      });
+    },
+    [ws, isConnected, roomId, currentUserId]
+  );
 
   const deleteSelectedShapes = useCallback(() => {
     const deletedIds = canvasState.selectedShapeIds;
@@ -607,12 +627,14 @@ export default function SharedCanvas({
         ws.send(
           JSON.stringify({
             type: "shape_delete",
+            roomId: roomId,
+            userId: currentUserId,
             shapeId,
           })
         );
       });
     }
-  }, [canvasState.selectedShapeIds, ws, isConnected]);
+  }, [canvasState.selectedShapeIds, ws, isConnected, roomId, currentUserId]);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {

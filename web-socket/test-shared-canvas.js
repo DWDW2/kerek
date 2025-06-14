@@ -183,6 +183,13 @@ class CanvasTestClient {
         console.log(`[${this.clientName}] 👋 User left:`, message.userId);
         break;
 
+      case "user_selection_changed":
+        console.log(
+          `[${this.clientName}] 🎯 User selection changed by ${message.userId}:`,
+          message.selectedShapeIds
+        );
+        break;
+
       case "error":
         console.error(`[${this.clientName}] ❌ Error:`, message.message);
         break;
@@ -233,9 +240,51 @@ class CanvasTestClient {
 
     const message = {
       type: "cursor_move",
+      userId: this.user.id,
       position,
     };
 
+    this.send(message);
+  }
+
+  sendUserSelection(selectedShapeIds) {
+    if (!this.hasJoinedRoom) return;
+
+    const message = {
+      type: "user_selection",
+      userId: this.user.id,
+      selectedShapeIds,
+    };
+
+    console.log(`[${this.clientName}] 📤 Sending user selection...`);
+    this.send(message);
+  }
+
+  sendShapeUpdate(shape) {
+    if (!this.hasJoinedRoom) return;
+
+    const message = {
+      type: "shape_update",
+      roomId: ROOM_ID,
+      userId: this.user.id,
+      shape,
+    };
+
+    console.log(`[${this.clientName}] 📤 Sending shape update...`);
+    this.send(message);
+  }
+
+  sendShapeDelete(shapeId) {
+    if (!this.hasJoinedRoom) return;
+
+    const message = {
+      type: "shape_delete",
+      roomId: ROOM_ID,
+      userId: this.user.id,
+      shapeId,
+    };
+
+    console.log(`[${this.clientName}] 📤 Deleting shape...`);
     this.send(message);
   }
 
@@ -303,10 +352,26 @@ async function runTests() {
 
     await sleep(1000);
 
-    console.log("\n📝 Test 4: Multiple Shape Updates");
+    console.log("\n📝 Test 4: User Selection");
+    client1.sendUserSelection([rect.id]);
+    client2.sendUserSelection([circle.id]);
+
+    await sleep(1000);
+
+    console.log("\n📝 Test 5: Shape Updates");
+    const updatedRect = { ...rect, x: 75, y: 75 };
+    client1.sendShapeUpdate(updatedRect);
+
+    await sleep(1000);
+
+    console.log("\n📝 Test 6: Shape Deletion");
+    client2.sendShapeDelete(circle.id);
+
+    await sleep(1000);
+
+    console.log("\n📝 Test 7: Multiple Shape Updates");
     const shapes = [
-      rect,
-      circle,
+      updatedRect,
       createMockRectangle(users[0].id, 300, 100),
       createMockCircle(users[1].id, 400, 150),
     ];

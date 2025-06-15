@@ -16,6 +16,7 @@ import { useUser } from "@/hooks/use-user";
 import Link from "next/link";
 import { ArrowLeftIcon } from "lucide-react";
 import { Button } from "../ui/button";
+import { ChatLayout } from "@/components/chat";
 
 export function ConversationDetail() {
   const { id: conversationId } = useParams();
@@ -202,34 +203,28 @@ export function ConversationDetail() {
   }
 
   return (
-    <Card className="h-full flex flex-col border-none shadow-none rounded-none p-0 m-0">
-      <CardHeader className="border-b px-6 py-6 bg-gradient-to-r from-primary/10 to-secondary/10 flex items-center gap-2 h-[61px]">
-        <Link href="/dashboard">
-          <ArrowLeftIcon />
-        </Link>
-        <ConversationHeader reciever={reciever!} />
-        <div className="ml-auto flex flex-row gap-2">
-          <ConversationCustomization
-            conversationId={conversationId as string}
-            currentCustomization={conversation.customization}
-          />
-          <GameLauncher conversationId={conversationId as string} />
-          <Link href={`/dashboard/conversations/${conversationId}/canvas`}>
-            <Button variant={"outline"} size={"sm"}>
-              Canvas
-            </Button>
+    <ChatLayout
+      header={
+        <>
+          <Link href="/dashboard">
+            <ArrowLeftIcon />
           </Link>
-        </div>
-      </CardHeader>
-      <CardContent className="flex-1 flex flex-col p-0 justify-between">
-        <MessageList
-          messages={messages}
-          hasMore={hasMore}
-          isLoadingMore={isLoadingMore}
-          loadOlderMessages={loadOlderMessages}
-          scrollRef={scrollRef as React.RefObject<HTMLDivElement>}
-          customization={conversation.customization}
-        />
+          <ConversationHeader reciever={reciever!} />
+          <div className="ml-auto flex flex-row gap-2">
+            <ConversationCustomization
+              conversationId={conversationId as string}
+              currentCustomization={conversation.customization}
+            />
+            <GameLauncher conversationId={conversationId as string} />
+            <Link href={`/dashboard/conversations/${conversationId}/canvas`}>
+              <Button variant={"outline"} size={"sm"}>
+                Canvas
+              </Button>
+            </Link>
+          </div>
+        </>
+      }
+      messageInput={
         <MessageInput
           isConnected={isConnected}
           isSending={isSending}
@@ -238,10 +233,17 @@ export function ConversationDetail() {
           setNewMessage={setNewMessage}
           onSendContent={sendContent}
         />
-        {wsError && (
-          <p className="text-sm text-red-500 mt-2 text-center">{wsError}</p>
-        )}
-      </CardContent>
-    </Card>
+      }
+      wsError={wsError}
+    >
+      <MessageList
+        messages={messages}
+        hasMore={hasMore}
+        isLoadingMore={isLoadingMore}
+        loadOlderMessages={loadOlderMessages}
+        scrollRef={scrollRef as React.RefObject<HTMLDivElement>}
+        customization={conversation.customization}
+      />
+    </ChatLayout>
   );
 }

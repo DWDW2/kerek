@@ -44,7 +44,9 @@ function DashboardBreadcrumbs() {
 export function Header() {
   const pathname = usePathname();
   const isConversationDetail =
-    pathname.includes("/conversations/") && pathname.split("/").length > 3;
+    pathname.includes("/conversations/") ||
+    (pathname.includes("/groups/") && pathname.split("/").length > 4) ||
+    pathname.includes("/invite/group/");
 
   if (isConversationDetail) {
     return;

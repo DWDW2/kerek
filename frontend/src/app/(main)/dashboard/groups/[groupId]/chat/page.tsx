@@ -1,20 +1,10 @@
 "use client";
-import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/auth-context";
-import { Button } from "@/components/ui/button";
-import { SendHorizontal } from "lucide-react";
 import React, { use, useEffect, useRef, useState } from "react";
+import { ChatLayout, GroupHeader, GroupMessageList } from "@/components/chat";
+import MessageInput from "@/components/conversations/message-input";
 
-interface Message {
-  id: string;
-  group_id: string;
-  sender_id: string;
-  content: string;
-  created_at: number;
-  updated_at: number;
-  is_edited: boolean;
-  is_deleted: boolean;
-}
+import { GroupMessage } from "@/types/group-message";
 
 interface Props {
   params: Promise<{ groupId: string }>;
@@ -24,16 +14,12 @@ export default function page({ params }: Props) {
   const paramsStatic = use(params);
   const { token, user } = useAuth();
   const wsRef = useRef<null | WebSocket>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [isSending, setIsSending] = useState<boolean>(false);
   const [wsError, setWsError] = useState<string | null>(null);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<GroupMessage[]>([]);
   const [message, setMessage] = useState<string>("");
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
 
   const fetchMessages = async () => {
     if (!token || !paramsStatic.groupId) return;
@@ -58,12 +44,6 @@ export default function page({ params }: Props) {
     }
   };
 
-
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
   useEffect(() => {
     if (token && paramsStatic.groupId) {
       fetchMessages();
@@ -72,7 +52,8 @@ export default function page({ params }: Props) {
 
   useEffect(() => {
     const connectToWs = () => {
-      const wsUrl = process.env.NEXT_PUBLIC_WS_URL_RUST || "ws://localhost:8080";
+      const wsUrl =
+        process.env.NEXT_PUBLIC_WS_URL_RUST || "ws://localhost:8080";
       const ws = new WebSocket(
         `${wsUrl}/ws/groups/${paramsStatic.groupId}?token=${token}`
       );
@@ -115,7 +96,7 @@ export default function page({ params }: Props) {
     };
   }, [paramsStatic.groupId, token]);
 
-  const sendContent = (content: string) => {
+  const sendContent = async (content: string) => {
     if (!content.trim()) {
       console.warn("Attempted to send empty content.");
       return;
@@ -147,7 +128,17 @@ export default function page({ params }: Props) {
 
       wsRef.current.send(JSON.stringify(messagePayload));
 
-      setMessage("");
+      const tempMessage: GroupMessage = {
+        id: `temp_${Date.now().toString()}`,
+        content: content,
+        sender_id: user.id,
+        group_id: paramsStatic.groupId,
+        created_at: Date.now() / 1000,
+        updated_at: Date.now() / 1000,
+        is_edited: false,
+        is_deleted: false,
+      };
+      setMessages((prevMessages) => [...prevMessages, tempMessage]);
     } catch (error) {
       console.error("Failed to send message via WebSocket:", error);
       const specificError =
@@ -158,79 +149,22 @@ export default function page({ params }: Props) {
     }
   };
 
-	const handleSendMessage = (e: React.FormEvent) => {
-		e.preventDefault();
-		if (message.trim()) {
-			const messagePayload = {
-				id: "",
-				created_at: new Date().getTime(),
-				updated_at: new Date().getTime(),
-				content: message,
-				groupId: paramsStatic.groupId,
-				senderId: user?.id,
-				is_edited: false,
-				is_deleted: false,
-			}
-			setMessages([messages, ...messagePayload]);
-			sendContent(message);
-		}
-	};
-
   return (
-    <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((msg) => (
-          <div
-            key={msg.id}
-            className={`p-3 rounded-lg max-w-xs ${
-              msg.sender_id === user?.id
-                ? "bg-blue-500 text-white ml-auto"
-                : "bg-gray-200 text-gray-900"
-            }`}
-          >
-            <p className="text-sm">{msg.content}</p>
-            <p className="text-xs opacity-70 mt-1">
-              {new Date(msg.created_at * 1000).toLocaleTimeString()}
-            </p>
-          </div>
-        ))}
-        <div ref={messagesEndRef} />
-      </div>
-
-      {wsError && (
-        <div className="p-2 bg-red-100 border-l-4 border-red-500 text-red-700 text-sm">
-          {wsError}
-        </div>
-      )}
-
-      <form
-        onSubmit={handleSendMessage}
-        className="flex items-center p-4 border-t"
-      >
-        <div className="flex-1 relative flex items-center space-x-2">
-          <Input
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder={
-              isConnected
-                ? "Type a message..."
-                : wsError
-                ? "Connection error. Please try again."
-                : "Connecting..."
-            }
-            disabled={!isConnected || isSending}
-            className="flex-1 py-6 text-base rounded-full px-5 shadow-sm border-muted-foreground/20 pr-24"
-          />
-        </div>
-        <Button
-          type="submit"
-          size="icon"
-          disabled={!isConnected || !message.trim() || isSending}
-          className="shrink-0 rounded-full h-12 w-12 shadow-md"
-        >
-          <SendHorizontal className="h-5 w-5" />
-        </Button>
-      </form>
-    </div>
+    <ChatLayout
+      header={<GroupHeader groupId={paramsStatic.groupId} />}
+      messageInput={
+        <MessageInput
+          isConnected={isConnected}
+          isSending={isSending}
+          wsError={wsError}
+          newMessage={message}
+          setNewMessage={setMessage}
+          onSendContent={sendContent}
+        />
+      }
+      wsError={wsError}
+    >
+      <GroupMessageList messages={messages} scrollRef={scrollRef} />
+    </ChatLayout>
   );
 }

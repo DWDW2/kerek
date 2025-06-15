@@ -25,7 +25,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   onSendContent,
 }) => {
   const onEmojiClick = (emojiData: EmojiClickData) => {
-    setNewMessage(emojiData.emoji);
+    setNewMessage((prev) => prev + emojiData.emoji);
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {

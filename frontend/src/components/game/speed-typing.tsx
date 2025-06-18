@@ -194,7 +194,7 @@ export function SpeedTyping({ conversationId }: SpeedTypingProps) {
     };
 
     return websocket;
-  }, [user?.id, conversationId, gameServerUrl, startTime]);
+  }, [user?.id, conversationId, gameServerUrl]);
 
   useEffect(() => {
     const websocket = connectToGame();

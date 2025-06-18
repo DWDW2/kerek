@@ -41,6 +41,8 @@ pub async fn setup_database(session: &web::Data<Session>, new: bool) -> Result<(
         session.query_unpaged("DROP TABLE IF EXISTS users", &[]).await?;
         session.query_unpaged("DROP TABLE IF EXISTS user_conversations", &[]).await?;
         session.query_unpaged("DROP TABLE IF EXISTS one_to_one_conversations", &[]).await?;
+        session.query_unpaged("DROP TABLE IF EXISTS code_posts" , &[]).await?;
+        session.query_unpaged("DROP TABLE IF EXISTS posts", &[]).await?;
     }
     
     session.query_unpaged(
@@ -180,6 +182,28 @@ pub async fn setup_database(session: &web::Data<Session>, new: bool) -> Result<(
         )",
         &[]
     ).await?;
+
+
+    session.query_unpaged(
+        "CREATE TABLE IF NOT EXISTS posts (
+            id UUID PRIMARY KEY,
+            user_id UUID,
+            title TEXT,
+            content TEXT,
+            code TEXT,
+            language TEXT,
+            tags SET<TEXT>,
+            created_at TIMESTAMP,
+            updated_at TIMESTAMP,
+            is_published BOOLEAN,
+            likes_count BIGINT
+        )",
+        &[]
+    ).await?;
+    
+    session.query_unpaged("CREATE INDEX IF NOT EXISTS ON posts (user_id)", &[]).await?;
+    session.query_unpaged("CREATE INDEX IF NOT EXISTS ON posts (created_at)", &[]).await?;
+    session.query_unpaged("CREATE INDEX IF NOT EXISTS ON posts (is_published)", &[]).await?;
 
     Ok(())
 }

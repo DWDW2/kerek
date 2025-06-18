@@ -154,10 +154,12 @@ export function removePlayer(
 
   let newGameStatus = gameState.gameStatus;
   let isActive = gameState.isActive;
+  let winner = gameState.winner;
 
-  if (gameState.isActive && Object.keys(newPlayers).length < 2) {
+  if (Object.keys(newPlayers).length < 2) {
     newGameStatus = "waiting";
     isActive = false;
+    winner = undefined;
   }
 
   return {
@@ -165,5 +167,6 @@ export function removePlayer(
     players: newPlayers,
     gameStatus: newGameStatus,
     isActive,
+    winner,
   };
 }

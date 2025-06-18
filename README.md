@@ -9,8 +9,8 @@ What I want to see in my app? Features that are not present in many apps:
 
 - [x] Fixing timestamps
 - [x] Create functions / utilities to simplify building apis in rust.
-- [ ] Create AI search function.
 - [x] Create connections using graph.
 - [x] deploy project
 - [x] Create mini games
 - [ ] Fix the arhitecture of the application.  
+- [ ] Create code share feature. Where people will share the code, not that happened in their lifes.  

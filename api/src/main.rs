@@ -6,6 +6,7 @@ mod users;
 mod conversations;
 mod groups;
 mod utils;
+mod posts;
 use actix_cors::Cors;
 use actix_web::{web, App, HttpServer};
 use dotenv::dotenv;
@@ -112,6 +113,17 @@ async fn main() -> std::io::Result<()> {
                                     .route("/{id}/messages", web::get().to(group_handler::list_messages))
                                     .route("/{id}/customization", web::post().to(group_handler::update_group_customization))
                             )
+                            .service(
+                                web::scope("/posts")
+                                    .route("", web::get().to(posts::handler::get_all_posts))
+                                    .route("", web::post().to(posts::handler::create_post))
+                                    .route("/my", web::get().to(posts::handler::get_my_posts))
+                                    .route("/user/{user_id}", web::get().to(posts::handler::get_posts_by_user))
+                                    .route("/{id}", web::get().to(posts::handler::get_post_by_id))
+                                    .route("/{id}", web::put().to(posts::handler::update_post))
+                                    .route("/{id}", web::delete().to(posts::handler::delete_post))
+                                    .route("/{id}/like", web::post().to(posts::handler::toggle_like_post))
+                                )
                     )
             )
             .default_service(web::route().to(|| async {

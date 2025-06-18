@@ -89,6 +89,7 @@ export class SpeedTypingManager {
     }
 
     if (room.players.has(playerId)) {
+      console.log(`Player ${playerId} reconnecting to game ${gameId}`);
       const existingPlayer = room.players.get(playerId)!;
       existingPlayer.ws = ws;
     } else {
@@ -97,20 +98,25 @@ export class SpeedTypingManager {
           JSON.stringify({
             type: "error",
             gameId,
-            message: "Game room is full",
+            message: "Game room is full (maximum 2 players)",
           })
         );
         return;
       }
 
+      console.log(`Player ${playerId} joining game ${gameId}`);
       room.players.set(playerId, { ws });
       room.gameState = addPlayer(room.gameState, playerId);
 
-      this.broadcastToRoom(gameId, {
-        type: "playerJoined",
+      this.broadcastToRoom(
         gameId,
-        playerId,
-      });
+        {
+          type: "playerJoined",
+          gameId,
+          playerId,
+        },
+        ws
+      );
     }
 
     ws.send(
@@ -120,6 +126,12 @@ export class SpeedTypingManager {
         gameState: room.gameState,
       })
     );
+
+    this.broadcastToRoom(gameId, {
+      type: "gameState",
+      gameId,
+      gameState: room.gameState,
+    });
   }
 
   private handleStart(ws: any, gameId?: string, playerId?: string) {
@@ -157,10 +169,22 @@ export class SpeedTypingManager {
       return;
     }
 
+    if (startRoom.gameState.gameStatus !== "waiting") {
+      ws.send(
+        JSON.stringify({
+          type: "error",
+          gameId,
+          message: "Game is already started or in progress",
+        })
+      );
+      return;
+    }
+
+    console.log(`Starting countdown for game ${gameId}`);
     startRoom.gameState = startCountdown(startRoom.gameState);
 
     this.broadcastToRoom(gameId, {
-      type: "gameState",
+      type: "countdown",
       gameId,
       gameState: startRoom.gameState,
     });
@@ -168,17 +192,24 @@ export class SpeedTypingManager {
     let countdownValue = 3;
     startRoom.countdownInterval = setInterval(() => {
       countdownValue--;
-      startRoom.gameState = updateCountdown(startRoom.gameState);
 
-      this.broadcastToRoom(gameId, {
-        type: "countdown",
-        gameId,
-        gameState: startRoom.gameState,
-      });
+      if (countdownValue > 0) {
+        startRoom.gameState = {
+          ...startRoom.gameState,
+          countdownValue: countdownValue,
+        };
 
-      if (countdownValue <= 0) {
+        this.broadcastToRoom(gameId, {
+          type: "countdown",
+          gameId,
+          gameState: startRoom.gameState,
+        });
+      } else {
         clearInterval(startRoom.countdownInterval);
         startRoom.countdownInterval = undefined;
+
+        startRoom.gameState = updateCountdown(startRoom.gameState);
+        console.log(`Game ${gameId} started!`);
 
         this.broadcastToRoom(gameId, {
           type: "gameState",
@@ -219,6 +250,17 @@ export class SpeedTypingManager {
       return;
     }
 
+    if (!typingRoom.gameState.players[playerId]) {
+      ws.send(
+        JSON.stringify({
+          type: "error",
+          gameId,
+          message: "Player not found in game",
+        })
+      );
+      return;
+    }
+
     typingRoom.gameState = updatePlayerProgress(
       typingRoom.gameState,
       playerId,
@@ -233,6 +275,12 @@ export class SpeedTypingManager {
       gameId,
       gameState: typingRoom.gameState,
     });
+
+    if (typingRoom.gameState.gameStatus === "finished") {
+      console.log(
+        `Game ${gameId} finished! Winner: ${typingRoom.gameState.winner}`
+      );
+    }
   }
 
   private handleReset(ws: any, gameId?: string, playerId?: string) {
@@ -278,12 +326,16 @@ export class SpeedTypingManager {
     this.speedTypingRooms.forEach((room, gameId) => {
       room.players.forEach(({ ws: playerWs }, playerId) => {
         if (playerWs === ws) {
+          console.log(`Player ${playerId} disconnected from game ${gameId}`);
           room.players.delete(playerId);
           room.gameState = removePlayer(room.gameState, playerId);
 
           if (room.countdownInterval) {
             clearInterval(room.countdownInterval);
             room.countdownInterval = undefined;
+            console.log(
+              `Cleared countdown for game ${gameId} due to player disconnect`
+            );
           }
 
           this.broadcastToRoom(gameId, {
@@ -293,6 +345,7 @@ export class SpeedTypingManager {
           });
 
           if (room.players.size === 0) {
+            console.log(`Deleting empty game room ${gameId}`);
             this.speedTypingRooms.delete(gameId);
           } else {
             this.broadcastToRoom(gameId, {
@@ -306,11 +359,15 @@ export class SpeedTypingManager {
     });
   }
 
-  private broadcastToRoom(gameId: string, message: SpeedTypingGameMessage) {
+  private broadcastToRoom(
+    gameId: string,
+    message: SpeedTypingGameMessage,
+    excludeWs?: any
+  ) {
     const room = this.speedTypingRooms.get(gameId);
     if (room) {
       room.players.forEach(({ ws }) => {
-        if (ws.readyState === 1) {
+        if (ws.readyState === 1 && ws !== excludeWs) {
           ws.send(JSON.stringify(message));
         }
       });

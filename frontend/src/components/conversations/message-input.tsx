@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { SendHorizontal, Smile } from "lucide-react";
+import { SendHorizontal, Smile, Code2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import EmojiPicker, { EmojiClickData } from "emoji-picker-react";
 import MediaPicker from "./media-picker";
+import { useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 
 interface MessageInputProps {
   isConnected: boolean;
@@ -24,6 +26,9 @@ const MessageInput: React.FC<MessageInputProps> = ({
   setNewMessage,
   onSendContent,
 }) => {
+  const router = useRouter();
+  const params = useParams();
+
   const onEmojiClick = (emojiData: EmojiClickData) => {
     setNewMessage((prev) => prev + emojiData.emoji);
   };
@@ -48,6 +53,11 @@ const MessageInput: React.FC<MessageInputProps> = ({
     }
   };
 
+  const handleOpenCodeEditor = () => {
+    const conversationId = params.id;
+    router.push(`/dashboard/conversations/${conversationId}/code-editor`);
+  };
+
   return (
     <form
       onSubmit={handleSendMessage}
@@ -67,7 +77,21 @@ const MessageInput: React.FC<MessageInputProps> = ({
           disabled={!isConnected || isSending}
           className="flex-1 py-6 text-base rounded-full px-5 shadow-sm border-muted-foreground/20 pr-24"
         />
-        <MediaPicker onEmojiClick={onEmojiClick} onGifSelect={handleSendGif} />
+        <div className="flex items-center w-[8%] gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={handleOpenCodeEditor}
+            className="shrink-0 rounded-full h-10 w-10"
+          >
+            <Code2 className="h-5 w-5" />
+          </Button>
+          <MediaPicker
+            onEmojiClick={onEmojiClick}
+            onGifSelect={handleSendGif}
+          />
+        </div>
       </div>
       <Button
         type="submit"

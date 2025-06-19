@@ -1,11 +1,11 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { Card, CardContent, CardHeader } from "./ui/card";
 import { LatestMessages } from "@/types/conversation";
 import { useUser } from "@/hooks/use-user";
 import { Avatar, AvatarImage, AvatarFallback } from "./ui/avatar";
 import Link from "next/link";
-import { MessageSquareIcon } from "lucide-react";
+import { MessageSquareIcon, Regex } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 type Props = {
@@ -14,7 +14,8 @@ type Props = {
 
 export function AppMessagesSidebar({ getLatestMessages }: Props) {
   const [latestMessages, setLatestMessages] = useState<LatestMessages[]>([]);
-  const pathname = usePathname();
+	const pattern = /^\/conversations\/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+ const pathname = usePathname();
   useEffect(() => {
     const fetchLatestMessages = async () => {
       const messages = await getLatestMessages(
@@ -24,8 +25,7 @@ export function AppMessagesSidebar({ getLatestMessages }: Props) {
     };
     fetchLatestMessages();
   }, [getLatestMessages]);
-
-  return !pathname.includes("/canvas") ? (
+  return !pathname.includes("/canvas") && !pathname.includes("/code-editor") && pattern.test(pathname) ? (
     <>
       <Card className="flex-col gap-2 w-[16 rem] py-0 pb-6 hidden md:flex">
         <CardHeader className="border-b [.border-b]:pb-0 px-0 h-[60px] p-6">

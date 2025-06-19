@@ -4,10 +4,13 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
 import JSConfetti from "js-confetti";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Message } from "@/types/conversation";
 import { ConversationCustomization } from "@/types/conversation";
 import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Copy, Check } from "lucide-react";
 
 interface MessageItemProps {
   message: Message;
@@ -20,6 +23,7 @@ const MessageItem: React.FC<MessageItemProps> = ({
 }) => {
   const { user } = useAuth();
   const jsConfettiRef = useRef<JSConfetti | null>(null);
+  const [copiedCode, setCopiedCode] = useState(false);
 
   useEffect(() => {
     jsConfettiRef.current = new JSConfetti();
@@ -56,7 +60,79 @@ const MessageItem: React.FC<MessageItemProps> = ({
     );
   };
 
+  const isCodeBlock = (content: string) => {
+    return (
+      content.startsWith("```") &&
+      content.endsWith("```") &&
+      content.includes("\n")
+    );
+  };
+
+  const parseCodeBlock = (content: string) => {
+    const match = content.match(/^```(\w+)?\n([\s\S]*?)```$/);
+    if (match) {
+      return {
+        language: match[1] || "text",
+        code: match[2].trim(),
+      };
+    }
+    return null;
+  };
+
+  const handleCopyCode = async (code: string) => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy code:", error);
+    }
+  };
+
+  const renderCodeBlock = (language: string, code: string) => {
+    return (
+      <div className="relative bg-gray-900 rounded-lg overflow-hidden my-2">
+        {/* Code header */}
+        <div className="flex items-center justify-between px-4 py-2 bg-gray-800 border-b border-gray-700">
+          <Badge variant="secondary" className="text-xs">
+            {language}
+          </Badge>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleCopyCode(code)}
+            className="h-7 text-xs text-gray-300 hover:text-white"
+          >
+            {copiedCode ? (
+              <>
+                <Check className="h-3 w-3 mr-1" />
+                Copied
+              </>
+            ) : (
+              <>
+                <Copy className="h-3 w-3 mr-1" />
+                Copy
+              </>
+            )}
+          </Button>
+        </div>
+
+        {/* Code content */}
+        <pre className="p-4 overflow-x-auto text-sm">
+          <code className="text-gray-100 font-mono">{code}</code>
+        </pre>
+      </div>
+    );
+  };
+
   const renderMessageContent = (content: string) => {
+    if (isCodeBlock(content)) {
+      const parsedCode = parseCodeBlock(content);
+      if (parsedCode) {
+        return renderCodeBlock(parsedCode.language, parsedCode.code);
+      }
+    }
+
     if (isGifUrl(content)) {
       return (
         <div className="relative w-48 h-48 md:w-64 md:h-64 overflow-hidden rounded-lg">

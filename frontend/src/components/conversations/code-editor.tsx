@@ -6,7 +6,6 @@ export default function Home() {
   const [code, setCode] = useState<string | undefined>(undefined);
   const [language, setLanguage] = useState('python');
   const [output, setOutput] = useState('');
-
   async function runCode() {
     const response = await fetch('/api/run-code', {
       method: 'POST',
@@ -14,7 +13,7 @@ export default function Home() {
       body: JSON.stringify({ code, language, stdin: '' }),
     });
     const data = await response.json();
-    setOutput(data.stdout || data.stderr || data.exception || data.error || 'No output');
+    setOutput(data.output || "" );
   }
 
   return (
@@ -26,7 +25,7 @@ export default function Home() {
       </select>
 		<Editor 
 			language={language}
-
+			onChange={setCode}
 		/> 	
       <button onClick={runCode} style={{ marginTop: 10 }}>Run Code</button>
       <pre style={{ backgroundColor: '#1e1e1e', color: 'white', padding: 10, height: '20vh', overflow: 'auto' }}>

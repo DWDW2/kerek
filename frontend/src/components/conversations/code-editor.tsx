@@ -1,7 +1,6 @@
 'use client';
-
 import { useState } from 'react';
-import Editor from '@monaco-editor/react';
+import Editor from "@monaco-editor/react"
 
 export default function Home() {
   const [code, setCode] = useState<string | undefined>(undefined);
@@ -11,7 +10,7 @@ export default function Home() {
   async function runCode() {
     const response = await fetch('/api/run-code', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', "authorization": `Bearer ${window.localStorage.getItem("auth_token")}},
+      headers: { 'Content-Type': 'application/json', "authorization": `Bearer ${window.localStorage.getItem("auth_token")}`},
       body: JSON.stringify({ code, language, stdin: '' }),
     });
     const data = await response.json();
@@ -25,13 +24,10 @@ export default function Home() {
         <option value="javascript">JavaScript</option>
         <option value="java">Java</option>
       </select>
-      <Editor
-        height="70vh"
-        language={language}
-        value={code}
-        onChange={setCode}
-        theme="vs-dark"
-      />
+		<Editor 
+			language={language}
+
+		/> 	
       <button onClick={runCode} style={{ marginTop: 10 }}>Run Code</button>
       <pre style={{ backgroundColor: '#1e1e1e', color: 'white', padding: 10, height: '20vh', overflow: 'auto' }}>
         {output}

@@ -24,70 +24,6 @@ export default function CodeEditorPage() {
     conversationId as string
   );
 
-  useEffect(() => {
-    if (!user?.id || !conversationId) return;
-
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
-
-    const token = localStorage.getItem("auth_token");
-    if (!token) return;
-
-    let shouldReconnect = true;
-
-    function connectWS() {
-      const wsUrl = process.env.NEXT_PUBLIC_WS_URL || "ws://localhost:8080";
-      const ws = new WebSocket(`${wsUrl}/ws/${conversationId}?token=${token}`);
-      wsRef.current = ws;
-
-      ws.onopen = () => {
-        setIsConnected(true);
-        setWsError(null);
-        console.log("WebSocket connected");
-      };
-
-      ws.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data);
-          console.log("Received message:", message);
-        } catch (error) {
-          console.error("Failed to parse WebSocket message:", error);
-        }
-      };
-
-      ws.onclose = () => {
-        setIsConnected(false);
-        setWsError("Connection closed");
-        console.log("WebSocket disconnected");
-        if (shouldReconnect) {
-          reconnectTimeoutRef.current = setTimeout(() => {
-            connectWS();
-          }, 2000);
-        }
-      };
-
-      ws.onerror = (error) => {
-        console.error("WebSocket error:", error);
-        setWsError("Connection error");
-      };
-    }
-
-    connectWS();
-
-    return () => {
-      shouldReconnect = false;
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-        reconnectTimeoutRef.current = null;
-      }
-    };
-  }, [conversationId, user?.id]);
 
   const sendContent = async (content: string) => {
     if (!content.trim()) {
@@ -181,14 +117,6 @@ export default function CodeEditorPage() {
             Write and share code with your conversation
           </p>
         </div>
-        {!isConnected && (
-          <div className="ml-auto">
-            <div className="flex items-center gap-2 text-sm text-orange-600">
-              <div className="h-2 w-2 rounded-full bg-orange-600 animate-pulse" />
-              Connecting...
-            </div>
-          </div>
-        )}
         {wsError && (
           <div className="ml-auto">
             <div className="flex items-center gap-2 text-sm text-red-600">

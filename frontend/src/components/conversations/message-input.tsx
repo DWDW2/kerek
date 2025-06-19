@@ -4,7 +4,7 @@ import { useState } from "react";
 import { SendHorizontal, Smile, Code2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import EmojiPicker, { EmojiClickData } from "emoji-picker-react";
+import  { EmojiClickData } from "emoji-picker-react";
 import MediaPicker from "./media-picker";
 import { useRouter } from "next/navigation";
 import { useParams } from "next/navigation";

@@ -62,7 +62,7 @@ impl SecurityConfig {
         if output.len() > self.max_output_size {
             return Err(AppError(
                 "Output size exceeds limit".to_string(),
-                StatusCode::REQUEST_ENTITY_TOO_LARGE,
+                StatusCode::REQUEST_HEADER_FIELDS_TOO_LARGE,
             ));
         }
         Ok(())

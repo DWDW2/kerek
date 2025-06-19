@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { SendHorizontal, Smile, Code2 } from "lucide-react";
+import { SendHorizontal,  Code2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import  { EmojiClickData } from "emoji-picker-react";

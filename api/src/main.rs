@@ -7,6 +7,7 @@ mod conversations;
 mod groups;
 mod utils;
 mod posts;
+mod compiler;
 use actix_cors::Cors;
 use actix_web::{web, App, HttpServer};
 use dotenv::dotenv;
@@ -20,6 +21,7 @@ use crate::groups::handler as group_handler;
 use crate::utils::websocket as websocket_handler;
 use crate::utils::websocket::RoomStore;
 use crate::utils::seed;
+use crate::compiler::handler as compiler_handler;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use std::collections::HashMap;
@@ -124,6 +126,12 @@ async fn main() -> std::io::Result<()> {
                                     .route("/{id}", web::delete().to(posts::handler::delete_post))
                                     .route("/{id}/like", web::post().to(posts::handler::toggle_like_post))
                                 )
+                            .service(
+                                web::scope("/compiler")
+                                    .route("/compile", web::post().to(compiler_handler::compile_code))
+                                    .route("/languages", web::get().to(compiler_handler::get_supported_languages))
+                                )
+                            .route("/run-code", web::post().to(compiler_handler::run_code_legacy))
                     )
             )
             .default_service(web::route().to(|| async {

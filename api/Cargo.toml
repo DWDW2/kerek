@@ -24,3 +24,6 @@ actix-broker = "0.4"
 log = "0.4.27"
 actix-ws = "0.3.0"
 rand = "0.9.1"
+# Compiler functionality dependencies
+tempfile = "3.8.1"
+lazy_static = "1.4.0"

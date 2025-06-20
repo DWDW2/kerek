@@ -1,9 +1,10 @@
 "use client";
 
-import { SendHorizontal,  Code2 } from "lucide-react";
+import { useState } from "react";
+import { SendHorizontal, Smile, Code2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import  { EmojiClickData } from "emoji-picker-react";
+import { EmojiClickData } from "emoji-picker-react";
 import MediaPicker from "./media-picker";
 import { useRouter } from "next/navigation";
 import { useParams } from "next/navigation";
@@ -35,6 +36,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !isConnected || isSending) return;
+
     try {
       await onSendContent(newMessage.trim());
       setNewMessage("");
@@ -76,7 +78,7 @@ const MessageInput: React.FC<MessageInputProps> = ({
           disabled={!isConnected || isSending}
           className="flex-1 py-6 text-base rounded-full px-5 shadow-sm border-muted-foreground/20 pr-24"
         />
-        <div className="flex items-center w-[8%] gap-2">
+        <div className="flex items-center gap-2">
           <Button
             type="button"
             variant="ghost"

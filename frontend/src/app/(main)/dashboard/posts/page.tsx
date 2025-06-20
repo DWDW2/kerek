@@ -1,15 +1,42 @@
+'use client'
 import React from "react";
 import { PostsList } from "@/components/posts/posts-list";
-import { getAllPosts } from "@/packages/api/posts";
+import { PostResponse } from "@/types/post";
 
-export default async function PostsPage() {
-  const posts = await getAllPosts(50);
+const API_URL = process.env.NEXT_PUBLIC_API_URL
 
+async function getAllPosts(limit?: number ): Promise<PostResponse[]> {
+  const params = new URLSearchParams();
+  if (limit) params.append("limit", limit.toString());
+
+  const response = await fetch(`${API_URL}/posts?${params}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+			"Authorization": `Bearer ${window.localStorage.getItem("auth_token")}`
+    },
+  });
+	console.log(response) 
+  if (!response.ok) {
+    throw new Error("hui");
+  }
+
+  return response.json();
+}
+
+export default function PostsPage() {
+	const [posts, setPosts] = React.useState<PostResponse[]>([]); 
+	React.useEffect(() => {	
+		getAllPosts()
+		.then(data => setPosts(data))
+		.catch(err => console.log(err))
+	}, []) 
+	console.log(posts) 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-4xl font-bold">
             Code Posts
           </h1>
           <p className="text-muted-foreground mt-2">

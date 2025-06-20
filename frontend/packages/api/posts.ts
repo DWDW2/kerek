@@ -2,7 +2,7 @@ import { Post, PostResponse, NewPost, UpdatePost } from "@/types/post";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
 
-export async function getAllPosts(limit?: number): Promise<PostResponse[]> {
+export async function getAllPosts(limit?: number ): Promise<PostResponse[]> {
   const params = new URLSearchParams();
   if (limit) params.append("limit", limit.toString());
 
@@ -12,7 +12,7 @@ export async function getAllPosts(limit?: number): Promise<PostResponse[]> {
       "Content-Type": "application/json",
     },
   });
-
+	console.log(response) 
   if (!response.ok) {
     throw new Error("Failed to fetch posts");
   }

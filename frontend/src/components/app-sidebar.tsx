@@ -11,6 +11,7 @@ import {
   Search,
   Settings2,
   Users,
+  Code2,
 } from "lucide-react";
 
 import {
@@ -45,6 +46,11 @@ const navigationData = {
       title: "Groups",
       href: "/dashboard/groups",
       icon: Users,
+    },
+    {
+      title: "Posts",
+      href: "/dashboard/posts",
+      icon: Code2,
     },
     {
       title: "Dashboard",

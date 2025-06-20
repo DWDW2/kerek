@@ -38,7 +38,6 @@ impl LanguageConfig {
     pub fn get_supported_languages() -> HashMap<String, LanguageConfig> {
         let mut languages = HashMap::new();
 
-        // C++
         languages.insert(
             "cpp".to_string(),
             LanguageConfig {
@@ -49,7 +48,6 @@ impl LanguageConfig {
             },
         );
 
-        // C
         languages.insert(
             "c".to_string(),
             LanguageConfig {
@@ -60,7 +58,6 @@ impl LanguageConfig {
             },
         );
 
-        // Python
         languages.insert(
             "python".to_string(),
             LanguageConfig {
@@ -71,7 +68,6 @@ impl LanguageConfig {
             },
         );
 
-        // Java
         languages.insert(
             "java".to_string(),
             LanguageConfig {
@@ -82,7 +78,6 @@ impl LanguageConfig {
             },
         );
 
-        // Node.js
         languages.insert(
             "javascript".to_string(),
             LanguageConfig {

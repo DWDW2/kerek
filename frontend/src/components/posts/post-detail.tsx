@@ -125,7 +125,6 @@ export function PostDetail({ post }: PostDetailProps) {
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      {/* Header */}
       <div className="flex items-center gap-4">
         <Link href="/dashboard/posts">
           <Button variant="ghost" size="sm">
@@ -135,7 +134,6 @@ export function PostDetail({ post }: PostDetailProps) {
         </Link>
       </div>
 
-      {/* Post Header */}
       <Card className="border-violet-100">
         <CardHeader>
           <div className="flex items-start justify-between">

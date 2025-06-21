@@ -7,32 +7,18 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Search, Filter, Plus } from "lucide-react";
 import Link from "next/link";
+import { getAllPosts } from "@/packages/api/posts";
+
+
 
 export function PostsList() {
   const [posts, setPosts] = useState<PostResponse[]>();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
-
-
 	useEffect(() => {
-		const fetchPosts = async () => {
-				const posts = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/posts`, {
-						method: "GET", 
-						headers: {
-							"ContentType": "application/json",
-							"Authorization": `Bearer ${window.localStorage.getItem("auth_token")}`
-						}
-				});
-				console.log(posts) 
-				const data = await posts.json();
-				return data; 
-		}
-
-		fetchPosts().then(data => setPosts(data)).catch(err => console.log(err)); 
-	}, [])
-  
-
-	const filteredPosts = posts!.filter((postResponse) => {
+			getAllPosts(50).then(data => setPosts(data)).catch(err => console.log(err))
+	}, [posts])
+  const filteredPosts = posts!.filter((postResponse) => {
     const matchesSearch =
       postResponse.post.title
         .toLowerCase()
@@ -46,7 +32,6 @@ export function PostsList() {
 
     return matchesSearch && matchesLanguage;
   });
-
 
   const allLanguages = Array.from(
     new Set(posts!.map((p) => p.post.language).filter(Boolean))

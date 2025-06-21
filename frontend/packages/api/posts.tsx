@@ -10,6 +10,7 @@ export async function getAllPosts(limit?: number ): Promise<PostResponse[]> {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
+			"Authorization": `Bearer ${window.localStorage.getItem("auth_token")}`
     },
   });
 	console.log(response) 

@@ -10,6 +10,8 @@ lazy_static::lazy_static! {
     static ref COMPILER_SERVICE: Arc<Mutex<Option<CompilerService>>> = Arc::new(Mutex::new(None));
 }
 
+
+
 async fn get_compiler_service() -> Result<CompilerService, AppError> {
     let mut service_guard = COMPILER_SERVICE.lock().await;
     
@@ -19,6 +21,8 @@ async fn get_compiler_service() -> Result<CompilerService, AppError> {
     
     CompilerService::new()
 }
+
+
 
 pub async fn compile_code(
     request: web::Json<CompileRequest>,
@@ -35,6 +39,8 @@ pub async fn get_supported_languages() -> Result<impl Responder, AppError> {
     
     Ok(HttpResponse::Ok().json(languages))
 }
+
+
 
 pub async fn run_code_legacy(
     request: web::Json<serde_json::Value>,
@@ -158,4 +164,6 @@ print(f"Hello, {name}!")
         assert!(result.success);
         assert!(result.output.as_ref().unwrap().contains("Hello, Alice!"));
     }
-} 
+}
+
+

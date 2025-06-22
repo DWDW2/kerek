@@ -9,30 +9,47 @@ import { Search, Filter, Plus } from "lucide-react";
 import Link from "next/link";
 
 export function PostsList() {
-  const [posts, setPosts] = useState<PostResponse[]>();
+  const [posts, setPosts] = useState<PostResponse[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedLanguage, setSelectedLanguage] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    async function fetchPosts() {
+      try {
+        setIsLoading(true);
+        setError(null);
 
-	useEffect(() => {
-		const fetchPosts = async () => {
-				const posts = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/posts`, {
-						method: "GET", 
-						headers: {
-							"ContentType": "application/json",
-							"Authorization": `Bearer ${window.localStorage.getItem("auth_token")}`
-						}
-				});
-				console.log(posts) 
-				const data = await posts.json();
-				return data; 
-		}
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/posts`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+            },
+          }
+        );
 
-		fetchPosts().then(data => setPosts(data)).catch(err => console.log(err)); 
-	}, [])
-  
+        if (!response.ok) {
+          throw new Error(`Failed to fetch posts: ${response.status}`);
+        }
 
-	const filteredPosts = posts!.filter((postResponse) => {
+        const data = await response.json();
+        setPosts(data);
+      } catch (err) {
+        console.error("Error fetching posts:", err);
+        setError(err instanceof Error ? err.message : "Failed to fetch posts");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchPosts();
+  }, []);
+
+  const filteredPosts = posts.filter((postResponse) => {
     const matchesSearch =
       postResponse.post.title
         .toLowerCase()
@@ -47,10 +64,25 @@ export function PostsList() {
     return matchesSearch && matchesLanguage;
   });
 
-
   const allLanguages = Array.from(
-    new Set(posts!.map((p) => p.post.language).filter(Boolean))
+    new Set(posts.map((p) => p.post.language).filter(Boolean))
   );
+
+  if (isLoading) {
+    return (
+      <div className="text-center py-12">
+        <div className="text-muted-foreground text-lg">Loading posts...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <div className="text-red-500 text-lg">{error}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -62,7 +94,6 @@ export function PostsList() {
               placeholder="Search posts..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 border-violet-200 focus:border-violet-400 focus:ring-violet-400"
             />
           </div>
           <div className="flex items-center gap-2">
@@ -108,9 +139,7 @@ export function PostsList() {
             No posts found matching your criteria
           </div>
           <Link href="/dashboard/posts/create">
-            <Button className="mt-4 text-white">
-              Create the first post
-            </Button>
+            <Button className="mt-4 text-white">Create the first post</Button>
           </Link>
         </div>
       )}

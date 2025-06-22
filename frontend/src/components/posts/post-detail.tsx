@@ -1,7 +1,5 @@
 "use client";
-
-import React, { useState } from "react";
-import { PostResponse } from "@/types/post";
+import React, { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,7 +25,22 @@ import Editor from "@monaco-editor/react";
 import { toggleLikePost } from "@/packages/api/posts";
 
 interface PostDetailProps {
-  post: PostResponse;
+  id: string;
+}
+
+interface PostData {
+  id: string;
+  title: string;
+  content: string;
+  created_at: number;
+  language: string;
+  code: string;
+  tags: string[];
+  likes: number;
+  likedByCurrentUser: boolean;
+  author: {
+    username: string;
+  };
 }
 
 interface CompileResult {
@@ -37,14 +50,57 @@ interface CompileResult {
   execution_time?: number;
 }
 
-export function PostDetail({ post }: PostDetailProps) {
-  const { post: postData, author } = post;
+export function PostDetail({ id }: PostDetailProps) {
   const [isLiked, setIsLiked] = useState(false);
-  const [likesCount, setLikesCount] = useState(postData.likes_count);
-  const [code, setCode] = useState(postData.code || "");
+  const [likesCount, setLikesCount] = useState<number>(0);
+  const [code, setCode] = useState<string>("");
   const [input, setInput] = useState("");
   const [result, setResult] = useState<CompileResult | null>(null);
   const [isRunning, setIsRunning] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [postData, setPostData] = useState<PostData | null>(null);
+
+  useEffect(() => {
+    async function fetchPosts() {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        const response = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/posts/${id}`,
+          {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${localStorage.getItem("auth_token")}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch posts: ${response.status}`);
+        }
+
+        const data = await response.json();
+        setPostData(data);
+        setCode(data.code || "");
+        setLikesCount(data.likes || 0);
+        setIsLiked(data.likedByCurrentUser || false);
+      } catch (err) {
+        console.error("Error fetching posts:", err);
+        setError(err instanceof Error ? err.message : "Failed to fetch posts");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchPosts();
+  }, [id]);
+
+  if (isLoading || !postData) {
+    return <div>Loading...</div>;
+  }
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp * 1000).toLocaleDateString("en-US", {
@@ -60,7 +116,7 @@ export function PostDetail({ post }: PostDetailProps) {
   const handleLike = async () => {
     try {
       await toggleLikePost(postData.id);
-      setIsLiked(!isLiked);
+      setIsLiked((prev) => !prev);
       setLikesCount((prev) => (isLiked ? prev - 1 : prev + 1));
     } catch (error) {
       console.error("Failed to toggle like:", error);
@@ -97,10 +153,7 @@ export function PostDetail({ post }: PostDetailProps) {
     }
   };
 
-  const copyCode = () => {
-    navigator.clipboard.writeText(code);
-  };
-
+  const copyCode = () => navigator.clipboard.writeText(code);
   const copyOutput = () => {
     const textToCopy = result?.output || result?.error || "";
     navigator.clipboard.writeText(textToCopy);
@@ -134,7 +187,7 @@ export function PostDetail({ post }: PostDetailProps) {
         </Link>
       </div>
 
-      <Card className="border-violet-100">
+      <Card>
         <CardHeader>
           <div className="flex items-start justify-between">
             <div>
@@ -144,13 +197,13 @@ export function PostDetail({ post }: PostDetailProps) {
               <div className="flex items-center gap-6">
                 <div className="flex items-center gap-3">
                   <Avatar className="h-10 w-10">
-                    <AvatarFallback className="bg-gradient-to-br from-violet-500 to-purple-600 text-white">
-                      {author.username.charAt(0).toUpperCase()}
+                    <AvatarFallback>
+                      {postData.author.username.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div>
                     <p className="font-medium text-gray-900">
-                      {author.username}
+                      {postData.author.username}
                     </p>
                     <div className="flex items-center gap-1 text-sm text-muted-foreground">
                       <Calendar className="h-4 w-4" />
@@ -160,24 +213,19 @@ export function PostDetail({ post }: PostDetailProps) {
                 </div>
                 <div className="flex items-center gap-4">
                   {postData.language && (
-                    <Badge className={`${getLanguageColor(postData.language)}`}>
+                    <Badge className={getLanguageColor(postData.language)}>
                       <Code2 className="h-4 w-4 mr-1" />
                       {postData.language}
                     </Badge>
                   )}
-                  <button
+                  <Button
                     onClick={handleLike}
-                    className={`flex items-center gap-2 px-3 py-1 rounded-lg transition-colors ${
-                      isLiked
-                        ? "text-red-600 hover:text-red-700 bg-red-50"
-                        : "text-muted-foreground hover:text-red-600 hover:bg-red-50"
-                    }`}
                   >
                     <Heart
                       className={`h-5 w-5 ${isLiked ? "fill-current" : ""}`}
                     />
                     {likesCount}
-                  </button>
+                  </Button>
                 </div>
               </div>
             </div>
@@ -188,14 +236,13 @@ export function PostDetail({ post }: PostDetailProps) {
             <p className="text-gray-700 leading-relaxed">{postData.content}</p>
           </div>
 
-          {/* Tags */}
-          {postData.tags && postData.tags.length > 0 && (
+          {postData.tags?.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-6">
               {postData.tags.map((tag) => (
                 <Badge
                   key={tag}
                   variant="secondary"
-                  className="bg-violet-50 text-violet-700 hover:bg-violet-100"
+                  className="bg-primary text-white"
                 >
                   {tag}
                 </Badge>
@@ -205,7 +252,6 @@ export function PostDetail({ post }: PostDetailProps) {
         </CardContent>
       </Card>
 
-      {/* Code Section */}
       {postData.code && (
         <Card className="border-violet-100">
           <CardHeader>

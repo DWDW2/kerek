@@ -16,7 +16,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Save, Eye, Code2, Tag, X, Plus, Loader2 } from "lucide-react";
 import Editor from "@monaco-editor/react";
 import { createPost } from "@/packages/api/posts";
@@ -46,7 +45,7 @@ export function CreatePostForm() {
     tags: [],
     is_published: true,
   });
-
+	
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title.trim() || !formData.content.trim()) {
@@ -104,7 +103,6 @@ export function CreatePostForm() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Title */}
           <div className="space-y-2">
             <Label htmlFor="title">Title *</Label>
             <Input
@@ -119,7 +117,6 @@ export function CreatePostForm() {
             />
           </div>
 
-          {/* Content */}
           <div className="space-y-2">
             <Label htmlFor="content">Description *</Label>
             <Textarea
@@ -134,7 +131,6 @@ export function CreatePostForm() {
             />
           </div>
 
-          {/* Language Selection */}
           <div className="space-y-2">
             <Label>Programming Language</Label>
             <Select
@@ -179,7 +175,6 @@ export function CreatePostForm() {
             </div>
           </div>
 
-          {/* Tags */}
           <div className="space-y-2">
             <Label>Tags</Label>
             <div className="space-y-3">
@@ -225,7 +220,6 @@ export function CreatePostForm() {
             </div>
           </div>
 
-          {/* Publish Toggle */}
           <div className="flex items-center justify-between p-4 bg-violet-50 rounded-lg">
             <div>
               <Label htmlFor="published" className="text-sm font-medium">
@@ -246,7 +240,6 @@ export function CreatePostForm() {
         </CardContent>
       </Card>
 
-      {/* Actions */}
       <div className="flex justify-between">
         <Button type="button" variant="outline" onClick={() => router.back()}>
           Cancel

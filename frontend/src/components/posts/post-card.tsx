@@ -10,7 +10,6 @@ import {
   Heart,
   Code2,
   Calendar,
-  User,
   Play,
   Eye,
   ExternalLink,
@@ -63,12 +62,12 @@ export function PostCard({ postResponse }: PostCardProps) {
   };
 
   return (
-    <Card className="group hover:shadow-lg transition-all duration-300 border-violet-100 hover:border-violet-300 hover:-translate-y-1">
+    <Card className="group hover:shadow-lg transition-all duration-300">  
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
             <Avatar className="h-8 w-8">
-              <AvatarFallback className="bg-gradient-to-br from-violet-500 to-purple-600 text-white text-sm">
+              <AvatarFallback>
                 {author.username.charAt(0).toUpperCase()}
               </AvatarFallback>
             </Avatar>
@@ -93,7 +92,7 @@ export function PostCard({ postResponse }: PostCardProps) {
 
       <CardContent className="space-y-4">
         <div>
-          <h3 className="font-semibold text-lg text-gray-900 mb-2 line-clamp-2 group-hover:text-violet-700 transition-colors">
+          <h3 className="font-semibold text-lg text-gray-900 mb-2 line-clamp-2  transition-colors">
             {post.title}
           </h3>
           <p className="text-sm text-muted-foreground line-clamp-3">
@@ -101,7 +100,6 @@ export function PostCard({ postResponse }: PostCardProps) {
           </p>
         </div>
 
-        {/* Code Preview */}
         {post.code && (
           <div className="bg-slate-900 rounded-lg p-3 relative overflow-hidden">
             <pre className="text-xs text-slate-300 overflow-hidden">
@@ -111,14 +109,13 @@ export function PostCard({ postResponse }: PostCardProps) {
           </div>
         )}
 
-        {/* Tags */}
         {post.tags && post.tags.length > 0 && (
           <div className="flex flex-wrap gap-1">
             {post.tags.slice(0, 3).map((tag) => (
               <Badge
                 key={tag}
                 variant="secondary"
-                className="text-xs bg-violet-50 text-violet-700 hover:bg-violet-100"
+                className="text-xs"
               >
                 {tag}
               </Badge>
@@ -134,7 +131,6 @@ export function PostCard({ postResponse }: PostCardProps) {
           </div>
         )}
 
-        {/* Actions */}
         <div className="flex items-center justify-between pt-2">
           <div className="flex items-center gap-4">
             <button
@@ -160,7 +156,6 @@ export function PostCard({ postResponse }: PostCardProps) {
             <Button
               size="sm"
               variant="ghost"
-              className="text-violet-600 hover:text-violet-700 hover:bg-violet-50"
             >
               <Eye className="h-4 w-4 mr-1" />
               View
